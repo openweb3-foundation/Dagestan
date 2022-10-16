@@ -404,7 +404,7 @@ impl<T: Signable, MK: MultiKeychain> PartiallyMultisigned<T, MK> {
     #[must_use = "consumes the original and returns the aggregated signature which should be used"]
     pub fn add_signature(self, signed: Signed<Indexed<T>, MK>, keychain: &MK) -> Self {
         if self.as_signable().hash().as_ref() != signed.as_signable().hash().as_ref() {
-            warn!(target: "STANCE-signed", "Tried to add a signature of a different object");
+            warn!(target: "STANCE-BFT-signed", "Tried to add a signature of a different object");
             return self;
         }
         match self {

@@ -19,12 +19,12 @@ pub enum Recipient {
 /// that at the same time spammers are cut off but honest nodes are able function correctly within
 /// these bounds.
 ///
-/// Note on Network Reliability: it is not assumed that each message that STANCE orders to send
-/// reaches its intended recipient, there are some built-in reliability mechanisms within STANCE
+/// Note on Network Reliability: it is not assumed that each message that STANCE-BFT orders to send
+/// reaches its intended recipient, there are some built-in reliability mechanisms within STANCE-BFT
 /// that will automatically detect certain failures and resend messages as needed. Clearly, the less
-/// reliable the network is, the worse the performance of STANCE will be (generally slower to
+/// reliable the network is, the worse the performance of STANCE-BFT will be (generally slower to
 /// produce output). Also, not surprisingly if the percentage of dropped messages is too high
-/// STANCE might stop making progress, but from what we observe in tests, this happens only when
+/// STANCE-BFT might stop making progress, but from what we observe in tests, this happens only when
 /// the reliability is extremely bad, i.e., drops below 50% (which means there is some significant
 /// issue with the network).
 ///
