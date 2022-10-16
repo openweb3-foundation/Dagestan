@@ -1,5 +1,5 @@
 [package]
-name = "aleph-bft-fuzz"
+name = "stance-bft-fuzz"
 version = "0.0.0"
 edition = "2021"
 authors = ["Cardinal Cryptography"]
@@ -9,8 +9,8 @@ publish = false
 cargo-fuzz = true
 
 [dependencies]
-aleph-bft = { path = "../consensus", version = "*" }
-aleph-bft-mock = { path = "../mock", version = "*" }
+stance-bft = { path = "../consensus", version = "*" }
+stance-bft-mock = { path = "../mock", version = "*" }
 async-trait = "0.1"
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive", "std"] }
 env_logger = "0.9"

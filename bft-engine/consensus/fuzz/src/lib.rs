@@ -1,8 +1,28 @@
-use aleph_bft::{
+// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
+
+// This file is part of STANCE.
+
+// Copyright (C) 2019-Present Setheum Labs.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+use stance_bft::{
     run_session, Config, DelayConfig, LocalIO, Network as NetworkT, NetworkData, NodeCount,
     NodeIndex, Recipient, SpawnHandle, TaskHandle, Terminator,
 };
-use aleph_bft_mock::{
+use stance_bft_mock::{
     Data, DataProvider, FinalizationHandler, Hasher64, Keychain, Loader, NetworkHook,
     PartialMultisignature, Router, Saver, Signature,
 };
@@ -234,7 +254,7 @@ pub fn spawn_honest_member_with_config(
             network,
             mk,
             spawner_inner.clone(),
-            Terminator::create_root(exit_rx, "AlephBFT-member"),
+            Terminator::create_root(exit_rx, "StanceBFT-member"),
         )
         .await
     };
