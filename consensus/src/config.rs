@@ -76,7 +76,7 @@ impl Debug for DelayConfig {
     }
 }
 
-/// Main configuration of the consensus. We refer to [the documentation](https://setheum-labs.github.io/Stance/stance_bft_api.md#34-stancebft-sessions)
+/// Main configuration of the consensus. We refer to [the documentation](https://setheum-labs.github.io/Stance/stance_bft_api.md#34-stance-sessions)
 /// Section 3.4 for a discussion of some of these parameters and their significance.
 #[derive(Clone, Debug)]
 pub struct Config {
