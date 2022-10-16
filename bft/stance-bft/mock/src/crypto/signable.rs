@@ -1,4 +1,4 @@
-use aleph_bft_types::Signable as SignableT;
+use stance_bft_types::Signable as SignableT;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
 pub struct Signable(String);

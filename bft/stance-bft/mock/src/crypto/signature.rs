@@ -1,4 +1,4 @@
-use aleph_bft_types::{Index, NodeIndex, SignatureSet};
+use stance_bft_types::{Index, NodeIndex, SignatureSet};
 use codec::{Decode, Encode};
 use std::hash::Hash;
 

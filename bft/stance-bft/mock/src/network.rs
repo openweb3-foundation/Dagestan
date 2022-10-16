@@ -1,4 +1,4 @@
-use aleph_bft_types::{Network as NetworkT, NodeCount, NodeIndex, Recipient};
+use stance_bft_types::{Network as NetworkT, NodeCount, NodeIndex, Recipient};
 use async_trait::async_trait;
 use futures::{
     channel::{

@@ -1,4 +1,4 @@
-use aleph_bft_types::Hasher;
+use stance_bft_types::Hasher;
 use std::{collections::hash_map::DefaultHasher, hash::Hasher as StdHasher};
 
 // A hasher from the standard library that hashes to u64, should be enough to

@@ -1,5 +1,5 @@
 use crate::crypto::{PartialMultisignature, Signature};
-use aleph_bft_types::{
+use stance_bft_types::{
     Index, Keychain as KeychainT, MultiKeychain as MultiKeychainT, NodeCount, NodeIndex,
     PartialMultisignature as PartialMultisignatureT, SignatureSet,
 };

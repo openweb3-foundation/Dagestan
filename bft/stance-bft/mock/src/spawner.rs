@@ -1,4 +1,4 @@
-use aleph_bft_types::{SpawnHandle, TaskHandle};
+use stance_bft_types::{SpawnHandle, TaskHandle};
 use codec::{Decode, Encode};
 use futures::{channel::oneshot, Future};
 

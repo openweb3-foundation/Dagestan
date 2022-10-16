@@ -1,4 +1,4 @@
-use aleph_bft_types::{DataProvider as DataProviderT, FinalizationHandler as FinalizationHandlerT};
+use stance_bft_types::{DataProvider as DataProviderT, FinalizationHandler as FinalizationHandlerT};
 use async_trait::async_trait;
 use codec::{Decode, Encode};
 use futures::{channel::mpsc::unbounded, future::pending};

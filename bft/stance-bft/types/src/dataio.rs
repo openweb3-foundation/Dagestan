@@ -2,9 +2,9 @@ use async_trait::async_trait;
 
 /// The source of data items that consensus should order.
 ///
-/// STANCE-BFT internally calls [`DataProvider::get_data`] whenever a new unit is created and data needs to be placed inside.
+/// StanceBFT internally calls [`DataProvider::get_data`] whenever a new unit is created and data needs to be placed inside.
 ///
-/// We refer to the documentation [here](../docs/src/stance_api.md) for a discussion
+/// We refer to the documentation [here](../../../docs/src/stance_api.md) for a discussion
 /// and examples of how this trait can be implemented.
 #[async_trait]
 pub trait DataProvider<Data>: Sync + Send + 'static {
