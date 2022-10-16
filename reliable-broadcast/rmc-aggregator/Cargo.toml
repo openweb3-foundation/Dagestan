@@ -1,8 +1,15 @@
 [package]
-name = "aggregator"
-version = "0.1.0"
+name = "stance-rmc-aggregator"
+version = "0.9.81"
+authors = ["Setheum Labs"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+stance-rmc = { path = "../rmc", version = "0.9.81" }
+stance-types = { path = "../../utils/types", version = "0.9.81" }
+
+async-trait = "0.1"
+futures = "0.3"
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+tokio = { version = "1.17", features = [ "sync", "macros", "time", "rt-multi-thread" ] }
+log = "0.4"
