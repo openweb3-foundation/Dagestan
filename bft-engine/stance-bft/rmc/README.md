@@ -5,4 +5,4 @@ in the top-level directory.
 
 Reliable MultiCast - a primitive for Reliable Broadcast protocol.
 
-For more information, check [the documentation][../../../docs/src/reliable_broadcast.md].
+For more information, check [the documentation][https;//setheum-labs.github.io/Stance/reliable_broadcast.md].

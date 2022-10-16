@@ -28,7 +28,7 @@ pub enum Recipient {
 /// the reliability is extremely bad, i.e., drops below 50% (which means there is some significant
 /// issue with the network).
 ///
-/// We refer to the documentation [here](../../../docs/src/stance_api.md)
+/// We refer to the documentation [here](https;//setheum-labs.github.io/Stance/stance_api.md)
 /// Section 3.1.2 for a discussion of the required guarantees of this trait's implementation.
 #[async_trait::async_trait]
 pub trait Network<D>: Send {

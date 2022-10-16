@@ -182,7 +182,7 @@ impl<T: Send + Sync + Clone> TaskScheduler<T> for DoublingDelayScheduler<T> {
 /// the multisigned message is yielded by the instance of [`ReliableMulticast`].
 /// The multisigned messages can be polled by calling [`ReliableMulticast::next_multisigned_hash`].
 ///
-/// We refer to [the documentation][../../../docs/src/reliable_broadcast.md]
+/// We refer to [the documentation][https;//setheum-labs.github.io/Stance/reliable_broadcast.md]
 /// for a high-level description of this protocol and how it is used for fork alerts.
 pub struct ReliableMulticast<'a, H: Signable + Hash, MK: MultiKeychain> {
     hash_states: HashMap<H, PartiallyMultisigned<H, MK>>,
