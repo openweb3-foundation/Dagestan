@@ -7,6 +7,7 @@ wrap_comments = true
 # Imports
 imports_granularity = "Crate"
 reorder_imports = true
+reorder_modules = true
 # Consistency
 newline_style = "Unix"
 # Misc
@@ -20,4 +21,4 @@ match_block_trailing_comma = true
 trailing_comma = "Vertical"
 trailing_semicolon = false
 use_field_init_shorthand = true
-license_template_path = "HEADER-BUSL1.1"
+license_template_path = "HEADER-GPL3"

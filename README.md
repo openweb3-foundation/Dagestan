@@ -1,6 +1,8 @@
 بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-# SHAMCE: Setheum Hybrid Asynchronous Multischema Consensus Engine
+# STANCE: Setheum Trusted Asynchronous Network Consensus Engine
+
+Powering Scalable Web3 Solutions with Setheum, producing a DAG-Blockchain Network
 
 ## LICENSE
-The primary license for LiquidAir is the Business Source License 1.1 (BUSL-1.1), see [LICENSE](https://github.com/Setheum-Labs/Shamce/blob/main/LICENSE.md).
+The primary license for Stance is the GPL3, see [LICENSE](https://github.com/Setheum-Labs/Stance/blob/main/LICENSE.md).

@@ -1,0 +1,11 @@
+[package]
+name = "stance-bft-types"
+version = "0.9.81"
+authors = ["Setheum Labs"]
+edition = "2021"
+
+[dependencies]
+stance-bft-crypto = { path = "../crypto", version = "0.9.81" }
+async-trait = "0.1"
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+futures = "0.3"
