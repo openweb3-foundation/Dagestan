@@ -15,4 +15,4 @@ We use all the logging macros, for the purposes outlined below:
 A rule of thumb to decide between `debug!` and `trace!` is that the former should never include data more detailed than simple numeric identifiers.
 No `warn!` logs should ever show up in a run that does not include Byzantine nodes.
 
-All log calls should include a `target` parameter, with a `StanceBFT` prefix for messages in the core library.
+All log calls should include a `target` parameter, with a `Stance` prefix for messages in the core library.

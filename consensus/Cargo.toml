@@ -1,0 +1,28 @@
+[package]
+name = "stance-consensus"
+version = "0.9.81"
+authors = ["Setheum Labs"]
+edition = "2021"
+
+[dependencies]
+stance-rmc = { path = "../reliable-broadcast/rmc", version = "0.9.81" }
+stance-types = { path = "../utils/types", version = "0.9.81" }
+async-trait = "0.1"
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+derivative = "2.2.0"
+futures = "0.3"
+futures-timer = "3.0"
+itertools = "0.10"
+log = "0.4"
+parking_lot = "0.12"
+rand = "0.8"
+
+[dev-dependencies]
+stance-mock = { path = "../utils/mock" }
+env_logger = "0.9"
+tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "time"] }
+serial_test = "0.8.0"
+
+[features]
+default = ["initial_unit_collection"]
+initial_unit_collection = []
