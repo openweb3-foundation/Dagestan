@@ -1,0 +1,19 @@
+name: Sync Setheum-Labs repo with Setheum-Foundation repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'Setheum-Labs/Stance'}}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: "main"
+          token: ${{ secrets.SYNCAZF }}
+      - name: Push to Setheum-Foundation
+        run: git push https://x-access-token:${{ secrets.SYNCAZF }}@github.com/setheum-foundation/Stance.git

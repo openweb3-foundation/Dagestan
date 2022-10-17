@@ -1,8 +1,52 @@
 [package]
-name = "finality-gadget"
-version = "0.1.0"
+name = "stance-finality-gadget"
+version = "0.5.0"
+authors = ["Cardinal Cryptography"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "Apache 2.0"
 
 [dependencies]
+stance = "0.18.1"
+stance-rmc = "0.4.0"
+stance-primitives = { package = "primitives", path = "../primitives" }
+stance-rmc-aggregator = { path = "../", tag = "aggregator-v0.1.0" }
+
+async-trait = "0.1"
+bytes = "1.0"
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+derive_more = "0.99"
+env_logger = "0.9"
+futures = "0.3"
+futures-timer = "3.0"
+hash-db = { version = "0.15.2", default-features = false }
+ip_network = "0.4"
+log = "0.4"
+lru = "0.7"
+parity-util-mem = "0.11"
+parking_lot = "0.12"
+rand = "0.8"
+serde = "1.0"
+tokio = { version = "1.17", features = [ "sync", "macros", "time", "rt-multi-thread" ] }
+
+prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-keystore = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-network = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-telemetry = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-service = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-application-crypto = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-core = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-runtime = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-state-machine = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-trie = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-utils = {  git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-api = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-blockchain = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-consensus = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-consensus = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-client-api = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sp-io = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+
+[dev-dependencies]
+substrate-test-runtime-client = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+substrate-test-runtime = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
+sc-block-builder = { git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "stance-v0.9.26" }
