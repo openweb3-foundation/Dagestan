@@ -1,0 +1,248 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>What is STANCE/AlephBFT? - STANCE</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="Documentation of the Rust implementation of Stance protocol">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="what_is_stance.html" class="active"><strong aria-hidden="true">1.</strong> What is STANCE/AlephBFT?</a></li><li class="chapter-item expanded "><a href="how_stance_does_it.html"><strong aria-hidden="true">2.</strong> How does Stance/Aleph work?</a></li><li class="chapter-item expanded "><a href="stance_api.html"><strong aria-hidden="true">3.</strong> API of Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="differences.html"><strong aria-hidden="true">4.</strong> Differences between Aleph and Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="internals.html"><strong aria-hidden="true">5.</strong> Stance/AlephBFT Internals</a></li><li class="chapter-item expanded "><a href="reliable_broadcast.html"><strong aria-hidden="true">6.</strong> Reliable Broadcast</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">STANCE</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="1-what-is-stance"><a class="header" href="#1-what-is-stance">1. What is STANCE?</a></h2>
+<p>STANCE is a Rust implementation of the <a href="https://arxiv.org/abs/1908.05156">Aleph Consensus Protocol</a> that offers a convenient API allowing it to be easily applied to various problems. The prime application of Stance/AlephBFT is to be the consensus engine (sometimes called the &quot;finality gadget&quot;) of Setheum (Aleph Zero uses Stance/AlephBFT).</p>
+<h3 id="11-high-level-idea-of-what-stancestancealephbft-does"><a class="header" href="#11-high-level-idea-of-what-stancestancealephbft-does">1.1 High level idea of what Stance/Stance/AlephBFT does.</a></h3>
+<p>From the high level perspective Stance/AlephBFT allows a set of <code>N</code> prespecified nodes to agree on an ordering of items arriving in some unreliable streams of data that these nodes locally observe. An illustrative example to have in mind here is when these nodes all observe a growing blockchain that does not have a built-in notion of finality, and would like to finalize blocks. Then the above mentioned &quot;streams of data&quot; are simply the advancing sequences of blockchain &quot;tips&quot; that each of the nodes sees. Note that in this (and in all the interesting examples), because of possible forks, or network delays, the data streams of individual nodes might not be consistent.
+The goal of a consensus protocol, is to ensure consistency of the decisions, even though relying on an unreliable data source. Consequently, what Stance/AlephBFT produces is a single stream of data that &quot;combines&quot; all the individual streams of the <code>N</code> nodes and importantly <strong>is consistent</strong> among the nodes. Thus, in the example above, all the nodes would produce a unique sequence of <strong>finalized</strong> blocks (see also the corresponding <a href="aleph_bft_api.html#321-blockchain-finality-gadget">Stance/AlephBFT API section</a> for a more detailed description on how to use Stance/AlephBFT as a finality gadget for a blockchain).</p>
+<h3 id="12-high-level-idea-of-stancealephbft-requirements"><a class="header" href="#12-high-level-idea-of-stancealephbft-requirements">1.2 High level idea of Stance/AlephBFT requirements.</a></h3>
+<p>Let us index the nodes taking part in the protocol as <code>i = 0, 1, ..., N-1</code> and call them &quot;the committee&quot;, below we list some high-level requirements to be able to run Stance/AlephBFT among this nodes:</p>
+<ol>
+<li>The nodes are connected via a network (that is not assumed to be 100% reliable) allowing them to send arbitrary messages to each other,</li>
+<li>Each node knows the identities of all other nodes (via their public keys) and holds a private key allowing it to sign messages.</li>
+<li>Each node <code>i</code> holds a data source object (to be explained in detail in the <a href="aleph_bft_api.html#311-dataio">DataIO subsection of Stance/AlephBFT API section</a> -- see <code>DataIO</code>) that allows it 1) to receive fresh pieces of data (we refer to it as the input stream <code>in_i</code>), and 2) to check that a piece of data received from another node is &quot;available&quot;. The availability is best understood when thinking about the blockchain example and data being block hashes. Then the availability question for a blockhash is essentially whether we locally hold a block with such a hash.</li>
+<li>At most <code>(N-1)/3</code> of the nodes can be malicious (act with the intent to break the protocol guarantees).</li>
+</ol>
+<h3 id="13-high-level-idea-of-stancealephbft-guarantees"><a class="header" href="#13-high-level-idea-of-stancealephbft-guarantees">1.3 High level idea of Stance/AlephBFT guarantees.</a></h3>
+<p>Stance/AlephBFT guarantees (as long as at most <code>(N-1)/3</code> nodes act maliciously) that each node <code>i</code> running the protocol produces a stream of data <code>out_i</code> such that:</p>
+<ol>
+<li>The output streams of any two nodes <code>out_i</code> and <code>out_j</code> are consistent, in the sense that at any given time one is a prefix of another. Moreover, none of the streams gets &quot;stuck&quot;, they keep producing items until the protocol is shut down. So, intuitively, all the streams produce the same items, but just at possibly different paces.</li>
+<li>Each item in the output stream is &quot;available&quot; to at least half the honest (= not malicious) nodes in the committee.</li>
+<li>Roughly speaking, most of the data items &quot;proposed&quot; by honest nodes (i.e., data coming from <code>in</code> streams of honest nodes) eventually land in the output stream.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+                            <a rel="next" href="how_stance_does_it.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+                    <a rel="next" href="how_stance_does_it.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
