@@ -2,11 +2,26 @@ cargo-features = ["resolver"]
 
 [workspace]
 members = [
-	"example",
-	"example",
-	"example",
+    # Core
+    "consensus",
+    "finality/finality-companion",
+    "finality/finality-gadget",
+    "reliable-broadcast/rmc",
+    "reliable-broadcast/rmc-aggregator",
+
+    # Utils
+    "utils/crypto",
+    "utils/examples/ordering",
+    "utils/examples/blockchain",
+    "utils/fuzz",
+    "utils/mock",
+    "utils/types",
+
 ]
 resolver = "2"
 
 [profile.dev]
 split-debuginfo = "unpacked"
+
+[profile.test]
+opt-level = 3
