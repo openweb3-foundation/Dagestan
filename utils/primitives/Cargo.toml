@@ -14,7 +14,6 @@ sp-application-crypto = { default-features = false, git = "https://github.com/Ca
 sp-core = { default-features = false, git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "aleph-v0.9.26" }
 sp-runtime = { default-features = false, git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "aleph-v0.9.26" }
 sp-std = { default-features = false, git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "aleph-v0.9.26" }
-sp-staking = { default-features = false, git = "https://github.com/Cardinal-Cryptography/substrate.git", branch = "aleph-v0.9.26" }
 
 [features]
 default = ["std"]
@@ -26,6 +25,5 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
-    "sp-staking/std",
 ]
 short_session = []
