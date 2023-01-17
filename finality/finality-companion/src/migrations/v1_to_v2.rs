@@ -1,6 +1,6 @@
 // بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-// This file is part of STANCE.
+// This file is part of DAGESTAN.
 
 // Copyright (C) 2019-Present Setheum Labs.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -52,7 +52,7 @@ pub struct Migration<T, P>(sp_std::marker::PhantomData<(T, P)>);
 
 impl<T: Config, P: PalletInfoAccess> StorageMigration for Migration<T, P> {
     #[cfg(feature = "try-runtime")]
-    const MIGRATION_STORAGE_PREFIX: &'static [u8] = b"STANCE_FINALITY_COMPANION::V1_TO_V2_MIGRATION";
+    const MIGRATION_STORAGE_PREFIX: &'static [u8] = b"DAGESTAN_FINALITY_COMPANION::V1_TO_V2_MIGRATION";
 }
 
 impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {

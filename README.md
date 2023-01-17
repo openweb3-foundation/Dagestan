@@ -1,6 +1,6 @@
 بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-# STANCE: Setheum Trusted Asynchronous Network Consensus Engine
+# DAGESTAN: Setheum Trusted Asynchronous Network Consensus Engine
 
 Powering Scalable Web3 Solutions with Setheum, producing a DAG-Blockchain Network
 

@@ -1,1 +1,1 @@
-A finality gadget using STANCE consensus mechanism from this [Stance Consensus module](../../consensus/README.md).
+A finality gadget using DAGESTAN consensus mechanism from this [Stance Consensus module](../../consensus/README.md).

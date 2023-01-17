@@ -1,6 +1,6 @@
 // بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-// This file is part of STANCE.
+// This file is part of DAGESTAN.
 
 // Copyright (C) 2019-Present Setheum Labs.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -211,26 +211,26 @@ impl MultiaddressT for Multiaddress {
 /// Name of the network protocol used by Setheum. This is how messages
 /// are subscribed to ensure that we are gossiping and communicating with our
 /// own network.
-const STANCE_PROTOCOL_NAME: &str = "/setheum/stance/2";
+const DAGESTAN_PROTOCOL_NAME: &str = "/setheum/stance/2";
 
 /// Name of the network protocol used by Setheum validators. Similar to
-/// STANCE_PROTOCOL_NAME, but only used by validators that authenticated to each other.
-const STANCE_VALIDATOR_PROTOCOL_NAME: &str = "/setheum/stance_validator/1";
+/// DAGESTAN_PROTOCOL_NAME, but only used by validators that authenticated to each other.
+const DAGESTAN_VALIDATOR_PROTOCOL_NAME: &str = "/setheum/stance_validator/1";
 
 /// Returns the canonical name of the protocol.
 pub fn protocol_name(protocol: &Protocol) -> Cow<'static, str> {
     use Protocol::*;
     match protocol {
-        Generic => Cow::Borrowed(STANCE_PROTOCOL_NAME),
-        Validator => Cow::Borrowed(STANCE_VALIDATOR_PROTOCOL_NAME),
+        Generic => Cow::Borrowed(DAGESTAN_PROTOCOL_NAME),
+        Validator => Cow::Borrowed(DAGESTAN_VALIDATOR_PROTOCOL_NAME),
     }
 }
 
 /// Attempts to convert the protocol name to a protocol.
 fn to_protocol(protocol_name: &str) -> Result<Protocol, ()> {
     match protocol_name {
-        STANCE_PROTOCOL_NAME => Ok(Protocol::Generic),
-        STANCE_VALIDATOR_PROTOCOL_NAME => Ok(Protocol::Validator),
+        DAGESTAN_PROTOCOL_NAME => Ok(Protocol::Generic),
+        DAGESTAN_VALIDATOR_PROTOCOL_NAME => Ok(Protocol::Validator),
         _ => Err(()),
     }
 }
