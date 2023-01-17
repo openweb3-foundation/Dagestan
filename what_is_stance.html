@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>What is STANCE/AlephBFT? - STANCE</title>
+        <title>What is DAGESTAN/AlephBFT? - DAGESTAN</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="what_is_stance.html" class="active"><strong aria-hidden="true">1.</strong> What is STANCE/AlephBFT?</a></li><li class="chapter-item expanded "><a href="how_stance_does_it.html"><strong aria-hidden="true">2.</strong> How does Stance/Aleph work?</a></li><li class="chapter-item expanded "><a href="stance_api.html"><strong aria-hidden="true">3.</strong> API of Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="differences.html"><strong aria-hidden="true">4.</strong> Differences between Aleph and Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="internals.html"><strong aria-hidden="true">5.</strong> Stance/AlephBFT Internals</a></li><li class="chapter-item expanded "><a href="reliable_broadcast.html"><strong aria-hidden="true">6.</strong> Reliable Broadcast</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="what_is_stance.html" class="active"><strong aria-hidden="true">1.</strong> What is DAGESTAN/AlephBFT?</a></li><li class="chapter-item expanded "><a href="how_stance_does_it.html"><strong aria-hidden="true">2.</strong> How does Stance/Aleph work?</a></li><li class="chapter-item expanded "><a href="stance_api.html"><strong aria-hidden="true">3.</strong> API of Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="differences.html"><strong aria-hidden="true">4.</strong> Differences between Aleph and Stance/AlephBFT</a></li><li class="chapter-item expanded "><a href="internals.html"><strong aria-hidden="true">5.</strong> Stance/AlephBFT Internals</a></li><li class="chapter-item expanded "><a href="reliable_broadcast.html"><strong aria-hidden="true">6.</strong> Reliable Broadcast</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -127,7 +127,7 @@
                         
                     </div>
 
-                    <h1 class="menu-title">STANCE</h1>
+                    <h1 class="menu-title">DAGESTAN</h1>
 
                     <div class="right-buttons">
                         
@@ -165,8 +165,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="1-what-is-stance"><a class="header" href="#1-what-is-stance">1. What is STANCE?</a></h2>
-<p>STANCE is a Rust implementation of the <a href="https://arxiv.org/abs/1908.05156">Aleph Consensus Protocol</a> that offers a convenient API allowing it to be easily applied to various problems. The prime application of Stance/AlephBFT is to be the consensus engine (sometimes called the &quot;finality gadget&quot;) of Setheum (Aleph Zero uses Stance/AlephBFT).</p>
+                        <h2 id="1-what-is-dagestan"><a class="header" href="#1-what-is-dagestan">1. What is DAGESTAN?</a></h2>
+<p>DAGESTAN is a Rust implementation of the <a href="https://arxiv.org/abs/1908.05156">Aleph Consensus Protocol</a> that offers a convenient API allowing it to be easily applied to various problems. The prime application of Stance/AlephBFT is to be the consensus engine (sometimes called the &quot;finality gadget&quot;) of Setheum (Aleph Zero uses Stance/AlephBFT).</p>
 <h3 id="11-high-level-idea-of-what-stancestancealephbft-does"><a class="header" href="#11-high-level-idea-of-what-stancestancealephbft-does">1.1 High level idea of what Stance/Stance/AlephBFT does.</a></h3>
 <p>From the high level perspective Stance/AlephBFT allows a set of <code>N</code> prespecified nodes to agree on an ordering of items arriving in some unreliable streams of data that these nodes locally observe. An illustrative example to have in mind here is when these nodes all observe a growing blockchain that does not have a built-in notion of finality, and would like to finalize blocks. Then the above mentioned &quot;streams of data&quot; are simply the advancing sequences of blockchain &quot;tips&quot; that each of the nodes sees. Note that in this (and in all the interesting examples), because of possible forks, or network delays, the data streams of individual nodes might not be consistent.
 The goal of a consensus protocol, is to ensure consistency of the decisions, even though relying on an unreliable data source. Consequently, what Stance/AlephBFT produces is a single stream of data that &quot;combines&quot; all the individual streams of the <code>N</code> nodes and importantly <strong>is consistent</strong> among the nodes. Thus, in the example above, all the nodes would produce a unique sequence of <strong>finalized</strong> blocks (see also the corresponding <a href="aleph_bft_api.html#321-blockchain-finality-gadget">Stance/AlephBFT API section</a> for a more detailed description on how to use Stance/AlephBFT as a finality gadget for a blockchain).</p>
