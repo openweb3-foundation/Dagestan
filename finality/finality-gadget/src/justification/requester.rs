@@ -1,6 +1,6 @@
 // بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-// This file is part of STANCE.
+// This file is part of DAGESTAN.
 
 // Copyright (C) 2019-Present Setheum Labs.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -20,7 +20,7 @@
 
 use std::{fmt, marker::PhantomData, sync::Arc, time::Instant};
 
-use stance_primitives::STANCE_ENGINE_ID;
+use stance_primitives::DAGESTAN_ENGINE_ID;
 use log::{debug, error, info, warn};
 use sc_client_api::HeaderBackend;
 use sp_api::{BlockId, BlockT, NumberFor};
@@ -167,7 +167,7 @@ where
         let finalization_res = self.finalizer.finalize_block(
             hash,
             number,
-            Some((STANCE_ENGINE_ID, versioned_encode(justification))),
+            Some((DAGESTAN_ENGINE_ID, versioned_encode(justification))),
         );
         match finalization_res {
             Ok(()) => {

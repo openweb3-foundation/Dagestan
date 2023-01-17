@@ -1,6 +1,6 @@
-## 1. What is STANCE?
+## 1. What is DAGESTAN?
 
-STANCE is a Rust implementation of the [Aleph Consensus Protocol](https://arxiv.org/abs/1908.05156) that offers a convenient API allowing it to be easily applied to various problems. The prime application of Stance/AlephBFT is to be the consensus engine (sometimes called the "finality gadget") of Setheum (Aleph Zero uses Stance/AlephBFT).
+DAGESTAN is a Rust implementation of the [Aleph Consensus Protocol](https://arxiv.org/abs/1908.05156) that offers a convenient API allowing it to be easily applied to various problems. The prime application of Stance/AlephBFT is to be the consensus engine (sometimes called the "finality gadget") of Setheum (Aleph Zero uses Stance/AlephBFT).
 
 ### 1.1 High level idea of what Stance/Stance/AlephBFT does.
 

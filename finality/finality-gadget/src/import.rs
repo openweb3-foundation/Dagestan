@@ -1,6 +1,6 @@
 // بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
 
-// This file is part of STANCE.
+// This file is part of DAGESTAN.
 
 // Copyright (C) 2019-Present Setheum Labs.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -20,7 +20,7 @@
 
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Instant};
 
-use stance_primitives::STANCE_ENGINE_ID;
+use stance_primitives::DAGESTAN_ENGINE_ID;
 use futures::channel::mpsc::{TrySendError, UnboundedSender};
 use log::{debug, warn};
 use sc_client_api::backend::Backend;
@@ -93,7 +93,7 @@ where
         justification: Justification,
     ) -> Result<(), SendJustificationError<Block>> {
         debug!(target: "stance-justification", "Importing justification for block {:?}", number);
-        if justification.0 != STANCE_ENGINE_ID {
+        if justification.0 != DAGESTAN_ENGINE_ID {
             return Err(SendJustificationError::Consensus(Box::new(
                 ConsensusError::ClientImport("Stance can import only Stance justifications.".into()),
             )));
@@ -170,12 +170,12 @@ where
         };
 
         if let Some(justification) =
-            justifications.and_then(|just| just.into_justification(STANCE_ENGINE_ID))
+            justifications.and_then(|just| just.into_justification(DAGESTAN_ENGINE_ID))
         {
             debug!(target: "stance-justification", "Got justification along imported block {:?}", number);
 
             if let Err(e) =
-                self.send_justification(post_hash, number, (STANCE_ENGINE_ID, justification))
+                self.send_justification(post_hash, number, (DAGESTAN_ENGINE_ID, justification))
             {
                 warn!(target: "stance-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
             }
