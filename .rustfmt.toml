@@ -1,4 +1,7 @@
 # Basic
+edition = "2021"
+group_imports = "StdExternalCrate"
+
 hard_tabs = true
 max_width = 120
 use_small_heuristics = "Max"
