@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{default::Default, sync::Arc};
 
 use futures::channel::mpsc;
@@ -29,21 +9,22 @@ use crate::{
     data_io::{
         chain_info::{AuxFinalizationChainInfoProvider, CachedChainInfoProvider},
         status_provider::get_proposal_status,
-        StanceData, ChainInfoProvider,
+        AlephData, ChainInfoProvider,
     },
+    mpsc::TrySendError,
     BlockHashNum, SessionBoundaries,
 };
 
 type InterpretersChainInfoProvider<B, C> =
     CachedChainInfoProvider<B, AuxFinalizationChainInfoProvider<B, Arc<C>>>;
 
-/// Takes as input ordered `StanceData` from `Stance` and pushes blocks that should be finalized
+/// Takes as input ordered `AlephData` from `AlephBFT` and pushes blocks that should be finalized
 /// to an output channel. The other end of the channel is held by the aggregator whose goal is to
 /// create multisignatures under the finalized blocks.
 pub struct OrderedDataInterpreter<B: BlockT, C: HeaderBackend<B>> {
     blocks_to_finalize_tx: mpsc::UnboundedSender<BlockHashNum<B>>,
     chain_info_provider: InterpretersChainInfoProvider<B, C>,
-    last_finalized_by_stance: BlockHashNum<B>,
+    last_finalized_by_aleph: BlockHashNum<B>,
     session_boundaries: SessionBoundaries<B>,
 }
 
@@ -71,27 +52,42 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         client: Arc<C>,
         session_boundaries: SessionBoundaries<B>,
     ) -> Self {
-        let last_finalized_by_stance =
+        let last_finalized_by_aleph =
             get_last_block_prev_session(session_boundaries.clone(), client.clone());
         let chain_info_provider =
-            AuxFinalizationChainInfoProvider::new(client, last_finalized_by_stance.clone());
+            AuxFinalizationChainInfoProvider::new(client, last_finalized_by_aleph.clone());
         let chain_info_provider =
             CachedChainInfoProvider::new(chain_info_provider, Default::default());
 
         OrderedDataInterpreter {
             blocks_to_finalize_tx,
             chain_info_provider,
-            last_finalized_by_stance,
+            last_finalized_by_aleph,
             session_boundaries,
         }
     }
 
-    fn blocks_to_finalize_from_data(&mut self, new_data: StanceData<B>) -> Vec<BlockHashNum<B>> {
+    pub fn set_last_finalized(&mut self, block: BlockHashNum<B>) {
+        self.last_finalized_by_aleph = block;
+    }
+
+    pub fn chain_info_provider(&mut self) -> &mut InterpretersChainInfoProvider<B, C> {
+        &mut self.chain_info_provider
+    }
+
+    pub fn send_block_to_finalize(
+        &mut self,
+        block: BlockHashNum<B>,
+    ) -> Result<(), TrySendError<BlockHashNum<B>>> {
+        self.blocks_to_finalize_tx.unbounded_send(block)
+    }
+
+    pub fn blocks_to_finalize_from_data(&mut self, new_data: AlephData<B>) -> Vec<BlockHashNum<B>> {
         let unvalidated_proposal = new_data.head_proposal;
         let proposal = match unvalidated_proposal.validate_bounds(&self.session_boundaries) {
             Ok(proposal) => proposal,
             Err(error) => {
-                warn!(target: "stance-finality", "Incorrect proposal {:?} passed through data availability, session bounds: {:?}, error: {:?}", unvalidated_proposal, self.session_boundaries, error);
+                warn!(target: "aleph-finality", "Incorrect proposal {:?} passed through data availability, session bounds: {:?}, error: {:?}", unvalidated_proposal, self.session_boundaries, error);
                 return Vec::new();
             }
         };
@@ -104,7 +100,7 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         match status {
             Finalize(blocks) => blocks,
             Ignore => {
-                debug!(target: "stance-finality", "Ignoring proposal {:?} in interpreter.", proposal);
+                debug!(target: "aleph-finality", "Ignoring proposal {:?} in interpreter.", proposal);
                 Vec::new()
             }
             Pending(pending_status) => {
@@ -115,19 +111,15 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
             }
         }
     }
-}
 
-impl<B: BlockT, C: HeaderBackend<B> + Send + 'static> stance::FinalizationHandler<StanceData<B>>
-    for OrderedDataInterpreter<B, C>
-{
-    fn data_finalized(&mut self, data: StanceData<B>) {
+    pub fn data_finalized(&mut self, data: AlephData<B>) {
         for block in self.blocks_to_finalize_from_data(data) {
-            self.last_finalized_by_stance = block.clone();
-            self.chain_info_provider
+            self.set_last_finalized(block.clone());
+            self.chain_info_provider()
                 .inner()
                 .update_aux_finalized(block.clone());
-            if let Err(err) = self.blocks_to_finalize_tx.unbounded_send(block) {
-                error!(target: "stance-finality", "Error in sending a block from FinalizationHandler, {}", err);
+            if let Err(err) = self.send_block_to_finalize(block) {
+                error!(target: "aleph-finality", "Error in sending a block from FinalizationHandler, {}", err);
             }
         }
     }

@@ -1,26 +1,6 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Instant};
 
-use stance_primitives::STANCE_ENGINE_ID;
+use aleph_primitives::ALEPH_ENGINE_ID;
 use futures::channel::mpsc::{TrySendError, UnboundedSender};
 use log::{debug, warn};
 use sc_client_api::backend::Backend;
@@ -39,11 +19,11 @@ use crate::{
     metrics::{Checkpoint, Metrics},
 };
 
-pub struct StanceBlockImport<Block, Be, I>
+pub struct AlephBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForStance<Block, Be>,
+    I: crate::ClientForAleph<Block, Be>,
 {
     inner: Arc<I>,
     justification_tx: UnboundedSender<JustificationNotification<Block>>,
@@ -67,18 +47,18 @@ impl<Block: BlockT> From<DecodeError> for SendJustificationError<Block> {
     }
 }
 
-impl<Block, Be, I> StanceBlockImport<Block, Be, I>
+impl<Block, Be, I> AlephBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForStance<Block, Be>,
+    I: crate::ClientForAleph<Block, Be>,
 {
     pub fn new(
         inner: Arc<I>,
         justification_tx: UnboundedSender<JustificationNotification<Block>>,
         metrics: Option<Metrics<<Block::Header as Header>::Hash>>,
-    ) -> StanceBlockImport<Block, Be, I> {
-        StanceBlockImport {
+    ) -> AlephBlockImport<Block, Be, I> {
+        AlephBlockImport {
             inner,
             justification_tx,
             metrics,
@@ -92,33 +72,33 @@ where
         number: NumberFor<Block>,
         justification: Justification,
     ) -> Result<(), SendJustificationError<Block>> {
-        debug!(target: "stance-justification", "Importing justification for block {:?}", number);
-        if justification.0 != STANCE_ENGINE_ID {
+        debug!(target: "aleph-justification", "Importing justification for block {:?}", number);
+        if justification.0 != ALEPH_ENGINE_ID {
             return Err(SendJustificationError::Consensus(Box::new(
-                ConsensusError::ClientImport("Stance can import only Stance justifications.".into()),
+                ConsensusError::ClientImport("Aleph can import only Aleph justifications.".into()),
             )));
         }
         let justification_raw = justification.1;
-        let stance_justification = backwards_compatible_decode(justification_raw)?;
+        let aleph_justification = backwards_compatible_decode(justification_raw)?;
 
         self.justification_tx
             .unbounded_send(JustificationNotification {
                 hash,
                 number,
-                justification: stance_justification,
+                justification: aleph_justification,
             })
             .map_err(SendJustificationError::Send)
     }
 }
 
-impl<Block, Be, I> Clone for StanceBlockImport<Block, Be, I>
+impl<Block, Be, I> Clone for AlephBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForStance<Block, Be>,
+    I: crate::ClientForAleph<Block, Be>,
 {
     fn clone(&self) -> Self {
-        StanceBlockImport {
+        AlephBlockImport {
             inner: self.inner.clone(),
             justification_tx: self.justification_tx.clone(),
             metrics: self.metrics.clone(),
@@ -128,11 +108,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Block, Be, I> BlockImport<Block> for StanceBlockImport<Block, Be, I>
+impl<Block, Be, I> BlockImport<Block> for AlephBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForStance<Block, Be> + Send,
+    I: crate::ClientForAleph<Block, Be> + Send,
     for<'a> &'a I:
         BlockImport<Block, Error = ConsensusError, Transaction = TransactionFor<I, Block>>,
     TransactionFor<I, Block>: Send + 'static,
@@ -160,7 +140,7 @@ where
 
         let justifications = block.justifications.take();
 
-        debug!(target: "stance-justification", "Importing block {:?} {:?} {:?}", number, block.header.hash(), block.post_hash());
+        debug!(target: "aleph-justification", "Importing block {:?} {:?} {:?}", number, block.header.hash(), block.post_hash());
         let import_result = self.inner.import_block(block, cache).await;
 
         let imported_aux = match import_result {
@@ -170,14 +150,14 @@ where
         };
 
         if let Some(justification) =
-            justifications.and_then(|just| just.into_justification(STANCE_ENGINE_ID))
+            justifications.and_then(|just| just.into_justification(ALEPH_ENGINE_ID))
         {
-            debug!(target: "stance-justification", "Got justification along imported block {:?}", number);
+            debug!(target: "aleph-justification", "Got justification along imported block {:?}", number);
 
             if let Err(e) =
-                self.send_justification(post_hash, number, (STANCE_ENGINE_ID, justification))
+                self.send_justification(post_hash, number, (ALEPH_ENGINE_ID, justification))
             {
-                warn!(target: "stance-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
+                warn!(target: "aleph-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
             }
         }
 
@@ -190,16 +170,16 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Block, Be, I> JustificationImport<Block> for StanceBlockImport<Block, Be, I>
+impl<Block, Be, I> JustificationImport<Block> for AlephBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForStance<Block, Be>,
+    I: crate::ClientForAleph<Block, Be>,
 {
     type Error = ConsensusError;
 
     async fn on_start(&mut self) -> Vec<(Block::Hash, NumberFor<Block>)> {
-        debug!(target: "stance-justification", "On start called");
+        debug!(target: "aleph-justification", "On start called");
         Vec::new()
     }
 
@@ -209,7 +189,7 @@ where
         number: NumberFor<Block>,
         justification: Justification,
     ) -> Result<(), Self::Error> {
-        debug!(target: "stance-justification", "import_justification called on {:?}", justification);
+        debug!(target: "aleph-justification", "import_justification called on {:?}", justification);
         self.send_justification(hash, number, justification)
             .map_err(|error| match error {
                 SendJustificationError::Send(_) => ConsensusError::ClientImport(String::from(
@@ -217,7 +197,7 @@ where
                 )),
                 SendJustificationError::Consensus(e) => *e,
                 SendJustificationError::Decode(e) => {
-                    warn!(target: "stance-justification", "Justification for block {:?} decoded incorrectly: {}", number, e);
+                    warn!(target: "aleph-justification", "Justification for block {:?} decoded incorrectly: {}", number, e);
                     ConsensusError::ClientImport(String::from("Could not decode justification"))
                 }
             })

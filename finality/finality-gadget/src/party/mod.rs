@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{default::Default, marker::PhantomData, path::PathBuf, time::Duration};
 
 use futures_timer::Delay;
@@ -118,7 +98,7 @@ where
                 }
                 let last_finalized_number = self.chain_state.finalized_number();
                 if last_finalized_number >= last_block {
-                    debug!(target: "stance-party", "Skipping session {:?} early because block {:?} is already finalized", session_id, last_finalized_number);
+                    debug!(target: "aleph-party", "Skipping session {:?} early because block {:?} is already finalized", session_id, last_finalized_number);
                     return;
                 }
             }
@@ -141,13 +121,13 @@ where
         };
         let authorities = authority_data.authorities();
 
-        trace!(target: "stance-party", "Authority data for session {:?}: {:?}", session_id, authorities);
+        trace!(target: "aleph-party", "Authority data for session {:?}: {:?}", session_id, authorities);
         let mut maybe_authority_task = if let Some(node_id) =
             self.session_manager.node_idx(authorities).await
         {
             match backup::rotate(self.backup_saving_path.clone(), session_id.0) {
                 Ok(backup) => {
-                    debug!(target: "stance-party", "Running session {:?} as authority id {:?}", session_id, node_id);
+                    debug!(target: "aleph-party", "Running session {:?} as authority id {:?}", session_id, node_id);
                     Some(
                         self.session_manager
                             .spawn_authority_task_for_session(
@@ -161,7 +141,7 @@ where
                 }
                 Err(err) => {
                     error!(
-                        target: "Stance-member",
+                        target: "AlephBFT-member",
                         "Error setting up backup saving for session {:?}. Not running the session: {}",
                         session_id, err
                     );
@@ -169,12 +149,12 @@ where
                 }
             }
         } else {
-            debug!(target: "stance-party", "Running session {:?} as non-authority", session_id);
+            debug!(target: "aleph-party", "Running session {:?} as non-authority", session_id);
             if let Err(e) = self
                 .session_manager
                 .start_nonvalidator_session(session_id, authorities)
             {
-                warn!(target: "stance-party", "Failed to start nonvalidator session{:?}:{:?}", session_id, e);
+                warn!(target: "aleph-party", "Failed to start nonvalidator session{:?}: {}", session_id, e);
             }
             None
         };
@@ -190,7 +170,7 @@ where
                 _ = &mut check_session_status => {
                     let last_finalized_number = self.chain_state.finalized_number();
                     if last_finalized_number >= last_block {
-                        debug!(target: "stance-party", "Terminating session {:?}", session_id);
+                        debug!(target: "aleph-party", "Terminating session {:?}", session_id);
                         break;
                     }
                     check_session_status = Delay::new(SESSION_STATUS_CHECK_PERIOD);
@@ -200,7 +180,7 @@ where
                         Some(notification) => {
                             match notification.await {
                                 Err(e) => {
-                                    warn!(target: "stance-party", "Error with subscription {:?}", e);
+                                    warn!(target: "aleph-party", "Error with subscription {:?}", e);
                                     start_next_session_network = Some(self.session_authorities.subscribe_to_insertion(next_session_id).await);
                                     None
                                 },
@@ -214,21 +194,22 @@ where
                 } => {
                     let next_session_authorities = next_session_authority_data.authorities();
                     match self.session_manager.node_idx(next_session_authorities).await {
-                         Some(_) => if let Err(e) = self
+                         Some(next_session_node_id) => if let Err(e) = self
                                 .session_manager
                                 .early_start_validator_session(
                                     next_session_id,
+                                    next_session_node_id,
                                     next_session_authorities,
                                 ).await
                             {
-                                warn!(target: "stance-party", "Failed to early start validator session{:?}:{:?}", next_session_id, e);
+                                warn!(target: "aleph-party", "Failed to early start validator session{:?}: {}", next_session_id, e);
                             }
                         None => {
                             if let Err(e) = self
                                 .session_manager
                                 .start_nonvalidator_session(next_session_id, next_session_authorities)
                             {
-                                warn!(target: "stance-party", "Failed to early start nonvalidator session{:?}:{:?}", next_session_id, e);
+                                warn!(target: "aleph-party", "Failed to early start nonvalidator session{:?}: {}", next_session_id, e);
                             }
                         }
                     }
@@ -240,26 +221,26 @@ where
                         None => None,
                     }
                 } => {
-                    warn!(target: "stance-party", "Authority task ended prematurely, giving up for this session.");
+                    warn!(target: "aleph-party", "Authority task ended prematurely, giving up for this session.");
                     maybe_authority_task = None;
                 },
             }
         }
         if let Some(task) = maybe_authority_task {
-            debug!(target: "stance-party", "Stopping the authority task.");
+            debug!(target: "aleph-party", "Stopping the authority task.");
             if task.stop().await.is_err() {
-                warn!(target: "stance-party", "Authority task did not stop silently");
+                warn!(target: "aleph-party", "Authority task did not stop silently");
             }
         }
         if let Err(e) = self.session_manager.stop_session(session_id) {
-            warn!(target: "stance-party", "Session Manager failed to stop in session {:?}: {:?}", session_id, e)
+            warn!(target: "aleph-party", "Session Manager failed to stop in session {:?}: {}", session_id, e)
         }
     }
 
     pub async fn run(mut self) {
         let starting_session = self.catch_up().await;
         for curr_id in starting_session.0.. {
-            info!(target: "stance-party", "Running session {:?}.", curr_id);
+            info!(target: "aleph-party", "Running session {:?}.", curr_id);
             self.run_session(SessionId(curr_id)).await;
         }
     }
@@ -287,7 +268,7 @@ mod tests {
         time::Duration,
     };
 
-    use stance_primitives::{AuthorityId, SessionAuthorityData};
+    use aleph_primitives::{AuthorityId, SessionAuthorityData};
     use sp_runtime::testing::UintAuthorityId;
     use tokio::{task::JoinHandle, time::sleep};
 

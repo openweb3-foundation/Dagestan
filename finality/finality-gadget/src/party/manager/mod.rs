@@ -1,62 +1,101 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
+use std::{collections::HashSet, marker::PhantomData, sync::Arc};
 
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-use std::{collections::HashSet, fmt::Debug, marker::PhantomData, sync::Arc, time::Duration};
-
-use stance::{DelayConfig, SpawnHandle};
-use stance_primitives::KEY_TYPE;
+use aleph_primitives::{AlephSessionApi, KEY_TYPE};
 use async_trait::async_trait;
 use futures::channel::oneshot;
-use log::{debug, trace, warn};
+use log::{debug, info, trace, warn};
 use sc_client_api::Backend;
 use sp_consensus::SelectChain;
 use sp_keystore::CryptoStore;
-use sp_runtime::traits::{Block as BlockT, Header};
+use sp_runtime::{
+    generic::BlockId,
+    traits::{Block as BlockT, Header, NumberFor, One, Saturating},
+};
 
 use crate::{
-    crypto::{AuthorityPen, AuthorityVerifier, Keychain},
+    abft::{
+        current_create_aleph_config, legacy_create_aleph_config, run_current_member,
+        run_legacy_member, SpawnHandle, SpawnHandleT,
+    },
+    crypto::{AuthorityPen, AuthorityVerifier},
     data_io::{ChainTracker, DataStore, OrderedDataInterpreter},
-    default_stance_config, mpsc,
-    network::{split, ComponentNetworkMap, ManagerError, RequestBlocks, SessionManager},
-    party::{backup::ABFTBackup, traits::NodeSessionManager},
-    AuthorityId, JustificationNotification, Metrics, NodeIndex, SessionBoundaries, SessionId,
-    SessionPeriod, UnitCreationDelay, VersionedNetworkData,
+    mpsc,
+    network::{
+        data::{
+            component::{Network, NetworkMap, SimpleNetwork},
+            split::split,
+        },
+        session::{SessionManager, SessionSender},
+        RequestBlocks,
+    },
+    party::{
+        backup::ABFTBackup, manager::aggregator::AggregatorVersion, traits::NodeSessionManager,
+    },
+    AuthorityId, CurrentRmcNetworkData, JustificationNotification, Keychain, LegacyRmcNetworkData,
+    Metrics, NodeIndex, SessionBoundaries, SessionId, SessionPeriod, UnitCreationDelay,
+    VersionedNetworkData,
 };
 
 mod aggregator;
 mod authority;
 mod chain_tracker;
 mod data_store;
-mod member;
 mod task;
 
 pub use authority::{SubtaskCommon, Subtasks, Task as AuthorityTask};
 pub use task::{Handle, Task};
 
-pub struct NodeSessionManagerImpl<C, SC, B, RB, BE>
+use crate::{
+    abft::{CURRENT_VERSION, LEGACY_VERSION},
+    data_io::DataProvider,
+};
+
+#[cfg(feature = "only_legacy")]
+const ONLY_LEGACY_ENV: &str = "ONLY_LEGACY_PROTOCOL";
+
+type LegacyNetworkType<B> = SimpleNetwork<
+    LegacyRmcNetworkData<B>,
+    mpsc::UnboundedReceiver<LegacyRmcNetworkData<B>>,
+    SessionSender<LegacyRmcNetworkData<B>>,
+>;
+type CurrentNetworkType<B> = SimpleNetwork<
+    CurrentRmcNetworkData<B>,
+    mpsc::UnboundedReceiver<CurrentRmcNetworkData<B>>,
+    SessionSender<CurrentRmcNetworkData<B>>,
+>;
+
+struct SubtasksParams<C, SC, B, N, BE>
 where
     B: BlockT,
-    C: crate::ClientForStance<B, BE> + Send + Sync + 'static,
+    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    BE: Backend<B> + 'static,
+    SC: SelectChain<B> + 'static,
+    N: Network<VersionedNetworkData<B>> + 'static,
+{
+    n_members: usize,
+    node_id: NodeIndex,
+    session_id: SessionId,
+    data_network: N,
+    session_boundaries: SessionBoundaries<B>,
+    subtask_common: SubtaskCommon,
+    data_provider: DataProvider<B>,
+    ordered_data_interpreter: OrderedDataInterpreter<B, C>,
+    aggregator_io: aggregator::IO<B>,
+    multikeychain: Keychain,
+    exit_rx: oneshot::Receiver<()>,
+    backup: ABFTBackup,
+    chain_tracker: ChainTracker<B, SC, C>,
+    phantom: PhantomData<BE>,
+}
+
+pub struct NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
+where
+    B: BlockT,
+    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
+    SM: SessionManager<VersionedNetworkData<B>> + 'static,
 {
     client: Arc<C>,
     select_chain: SC,
@@ -65,19 +104,21 @@ where
     authority_justification_tx: mpsc::UnboundedSender<JustificationNotification<B>>,
     block_requester: RB,
     metrics: Option<Metrics<<B::Header as Header>::Hash>>,
-    spawn_handle: crate::SpawnHandle,
-    session_manager: SessionManager<VersionedNetworkData<B>>,
+    spawn_handle: SpawnHandle,
+    session_manager: SM,
     keystore: Arc<dyn CryptoStore>,
     _phantom: PhantomData<BE>,
 }
 
-impl<C, SC, B, RB, BE> NodeSessionManagerImpl<C, SC, B, RB, BE>
+impl<C, SC, B, RB, BE, SM> NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
 where
     B: BlockT,
-    C: crate::ClientForStance<B, BE> + Send + Sync + 'static,
+    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
+    SM: SessionManager<VersionedNetworkData<B>>,
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -88,8 +129,8 @@ where
         authority_justification_tx: mpsc::UnboundedSender<JustificationNotification<B>>,
         block_requester: RB,
         metrics: Option<Metrics<<B::Header as Header>::Hash>>,
-        spawn_handle: crate::SpawnHandle,
-        session_manager: SessionManager<VersionedNetworkData<B>>,
+        spawn_handle: SpawnHandle,
+        session_manager: SM,
         keystore: Arc<dyn CryptoStore>,
     ) -> Self {
         Self {
@@ -105,6 +146,122 @@ where
             keystore,
             _phantom: PhantomData,
         }
+    }
+
+    fn legacy_subtasks<N: Network<VersionedNetworkData<B>> + 'static>(
+        &self,
+        params: SubtasksParams<C, SC, B, N, BE>,
+    ) -> Subtasks {
+        let SubtasksParams {
+            n_members,
+            node_id,
+            session_id,
+            data_network,
+            session_boundaries,
+            subtask_common,
+            data_provider,
+            ordered_data_interpreter,
+            aggregator_io,
+            multikeychain,
+            exit_rx,
+            backup,
+            chain_tracker,
+            ..
+        } = params;
+        let consensus_config =
+            legacy_create_aleph_config(n_members, node_id, session_id, self.unit_creation_delay);
+        let data_network = data_network.map();
+
+        let (unfiltered_aleph_network, rmc_network) =
+            split(data_network, "aleph_network", "rmc_network");
+        let (data_store, aleph_network) = DataStore::new(
+            session_boundaries.clone(),
+            self.client.clone(),
+            self.block_requester.clone(),
+            Default::default(),
+            unfiltered_aleph_network,
+        );
+        Subtasks::new(
+            exit_rx,
+            run_legacy_member(
+                subtask_common.clone(),
+                multikeychain.clone(),
+                consensus_config,
+                aleph_network.into(),
+                data_provider,
+                ordered_data_interpreter,
+                backup,
+            ),
+            aggregator::task(
+                subtask_common.clone(),
+                self.client.clone(),
+                aggregator_io,
+                session_boundaries,
+                self.metrics.clone(),
+                multikeychain,
+                AggregatorVersion::<CurrentNetworkType<B>, _>::Legacy(rmc_network),
+            ),
+            chain_tracker::task(subtask_common.clone(), chain_tracker),
+            data_store::task(subtask_common, data_store),
+        )
+    }
+
+    fn current_subtasks<N: Network<VersionedNetworkData<B>> + 'static>(
+        &self,
+        params: SubtasksParams<C, SC, B, N, BE>,
+    ) -> Subtasks {
+        let SubtasksParams {
+            n_members,
+            node_id,
+            session_id,
+            data_network,
+            session_boundaries,
+            subtask_common,
+            data_provider,
+            ordered_data_interpreter,
+            aggregator_io,
+            multikeychain,
+            exit_rx,
+            backup,
+            chain_tracker,
+            ..
+        } = params;
+        let consensus_config =
+            current_create_aleph_config(n_members, node_id, session_id, self.unit_creation_delay);
+        let data_network = data_network.map();
+
+        let (unfiltered_aleph_network, rmc_network) =
+            split(data_network, "aleph_network", "rmc_network");
+        let (data_store, aleph_network) = DataStore::new(
+            session_boundaries.clone(),
+            self.client.clone(),
+            self.block_requester.clone(),
+            Default::default(),
+            unfiltered_aleph_network,
+        );
+        Subtasks::new(
+            exit_rx,
+            run_current_member(
+                subtask_common.clone(),
+                multikeychain.clone(),
+                consensus_config,
+                aleph_network.into(),
+                data_provider,
+                ordered_data_interpreter,
+                backup,
+            ),
+            aggregator::task(
+                subtask_common.clone(),
+                self.client.clone(),
+                aggregator_io,
+                session_boundaries,
+                self.metrics.clone(),
+                multikeychain,
+                AggregatorVersion::<_, LegacyNetworkType<B>>::Current(rmc_network),
+            ),
+            chain_tracker::task(subtask_common.clone(), chain_tracker),
+            data_store::task(subtask_common, data_store),
+        )
     }
 
     async fn spawn_subtasks(
@@ -127,13 +284,6 @@ where
 
         let session_boundaries = SessionBoundaries::new(session_id, self.session_period);
         let (blocks_for_aggregator, blocks_from_interpreter) = mpsc::unbounded();
-
-        let consensus_config = create_stance_config(
-            authorities.len(),
-            node_id,
-            session_id,
-            self.unit_creation_delay,
-        );
 
         let (chain_tracker, data_provider) = ChainTracker::new(
             self.select_chain.clone(),
@@ -158,67 +308,86 @@ where
             justifications_for_chain: self.authority_justification_tx.clone(),
         };
 
-        let data_network = self
+        let data_network = match self
             .session_manager
             .start_validator_session(session_id, authority_verifier, node_id, authority_pen)
             .await
-            .expect("Failed to start validator session!");
+        {
+            Ok(data_network) => data_network,
+            Err(e) => panic!("Failed to start validator session: {}", e),
+        };
 
-        let data_network = data_network.map();
+        let last_block_of_previous_session = session_boundaries
+            .first_block()
+            .saturating_sub(<NumberFor<B>>::one());
 
-        let (unfiltered_stance_network, rmc_network) =
-            split(data_network, "stance_network", "rmc_network");
-        let (data_store, stance_network) = DataStore::new(
-            session_boundaries.clone(),
-            self.client.clone(),
-            self.block_requester.clone(),
-            Default::default(),
-            unfiltered_stance_network,
-        );
-
-        Subtasks::new(
+        let params = SubtasksParams {
+            n_members: authorities.len(),
+            node_id,
+            session_id,
+            data_network,
+            session_boundaries,
+            subtask_common,
+            data_provider,
+            ordered_data_interpreter,
+            aggregator_io,
+            multikeychain,
             exit_rx,
-            member::task(
-                subtask_common.clone(),
-                multikeychain.clone(),
-                consensus_config,
-                stance_network.into(),
-                data_provider,
-                ordered_data_interpreter,
-                backup,
-            ),
-            aggregator::task(
-                subtask_common.clone(),
-                self.client.clone(),
-                aggregator_io,
-                session_boundaries,
-                self.metrics.clone(),
-                multikeychain,
-                rmc_network,
-            ),
-            chain_tracker::task(subtask_common.clone(), chain_tracker),
-            data_store::task(subtask_common, data_store),
-        )
+            backup,
+            chain_tracker,
+            phantom: PhantomData,
+        };
+
+        match self
+            .client
+            .runtime_api()
+            .next_session_finality_version(&BlockId::Number(last_block_of_previous_session))
+        {
+            #[cfg(feature = "only_legacy")]
+            _ if self.only_legacy() => {
+                info!(target: "aleph-party", "Running session with legacy-only AlephBFT version.");
+                self.legacy_subtasks(params)
+            }
+            // The `as`es here should be removed, but this would require a pallet migration and I
+            // am lazy.
+            Ok(version) if version == CURRENT_VERSION as u32 => {
+                info!(target: "aleph-party", "Running session with AlephBFT version {}, which is current.", version);
+                self.current_subtasks(params)
+            }
+            Ok(version) if version == LEGACY_VERSION as u32 => {
+                info!(target: "aleph-party", "Running session with AlephBFT version {}, which is legacy.", version);
+                self.legacy_subtasks(params)
+            }
+            Ok(version) => {
+                panic!("Unsupported version {}. Supported versions: {} or {}. Potentially outdated node.", version, LEGACY_VERSION, CURRENT_VERSION)
+            }
+            _ => {
+                // this might happen when there was no runtime upgrade yet. Fallback to legacy version
+                self.legacy_subtasks(params)
+            }
+        }
+    }
+
+    #[cfg(feature = "only_legacy")]
+    fn only_legacy(&self) -> bool {
+        std::env::var(ONLY_LEGACY_ENV)
+            .map(|legacy| !legacy.is_empty())
+            .unwrap_or(false)
     }
 }
 
-#[derive(Debug)]
-pub enum SessionManagerError {
-    NotAuthority,
-    ManagerError(ManagerError),
-}
-
 #[async_trait]
-impl<C, SC, B, RB, BE> NodeSessionManager for NodeSessionManagerImpl<C, SC, B, RB, BE>
+impl<C, SC, B, RB, BE, SM> NodeSessionManager for NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
 where
     B: BlockT,
-    C: crate::ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
+    SM: SessionManager<VersionedNetworkData<B>>,
 {
-    type Error = SessionManagerError;
+    type Error = SM::Error;
 
     async fn spawn_authority_task_for_session(
         &self,
@@ -234,9 +403,9 @@ where
 
         AuthorityTask::new(
             self.spawn_handle
-                .spawn_essential("stance/session_authority", async move {
+                .spawn_essential("aleph/session_authority", async move {
                     if subtasks.wait_completion().await.is_err() {
-                        warn!(target: "stance-party", "Authority subtasks failed.");
+                        warn!(target: "aleph-party", "Authority subtasks failed.");
                     }
                 }),
             node_id,
@@ -247,20 +416,20 @@ where
     async fn early_start_validator_session(
         &self,
         session: SessionId,
+        node_id: NodeIndex,
         authorities: &[AuthorityId],
     ) -> Result<(), Self::Error> {
-        let node_id = match self.node_idx(authorities).await {
-            Some(id) => id,
-            None => return Err(SessionManagerError::NotAuthority),
-        };
         let authority_verifier = AuthorityVerifier::new(authorities.to_vec());
         let authority_pen =
             AuthorityPen::new(authorities[node_id.0].clone(), self.keystore.clone())
                 .await
                 .expect("The keys should sign successfully");
-        self.session_manager
-            .early_start_validator_session(session, authority_verifier, node_id, authority_pen)
-            .map_err(SessionManagerError::ManagerError)
+        self.session_manager.early_start_validator_session(
+            session,
+            authority_verifier,
+            node_id,
+            authority_pen,
+        )
     }
 
     fn start_nonvalidator_session(
@@ -272,13 +441,10 @@ where
 
         self.session_manager
             .start_nonvalidator_session(session, authority_verifier)
-            .map_err(SessionManagerError::ManagerError)
     }
 
     fn stop_session(&self, session: SessionId) -> Result<(), Self::Error> {
-        self.session_manager
-            .stop_session(session)
-            .map_err(SessionManagerError::ManagerError)
+        self.session_manager.stop_session(session)
     }
 
     async fn node_idx(&self, authorities: &[AuthorityId]) -> Option<NodeIndex> {
@@ -289,56 +455,10 @@ where
             .unwrap()
             .into_iter()
             .collect();
-        trace!(target: "stance-data-store", "Found {:?} consensus keys in our local keystore {:?}", our_consensus_keys.len(), our_consensus_keys);
+        trace!(target: "aleph-data-store", "Found {:?} consensus keys in our local keystore {:?}", our_consensus_keys.len(), our_consensus_keys);
         authorities
             .iter()
             .position(|pkey| our_consensus_keys.contains(&pkey.into()))
             .map(|id| id.into())
     }
-}
-
-fn create_stance_config(
-    n_members: usize,
-    node_id: NodeIndex,
-    session_id: SessionId,
-    unit_creation_delay: UnitCreationDelay,
-) -> stance::Config {
-    let mut consensus_config = default_stance_config(n_members.into(), node_id, session_id.0 as u64);
-    consensus_config.max_round = 7000;
-    let unit_creation_delay = Arc::new(move |t| {
-        if t == 0 {
-            Duration::from_millis(2000)
-        } else {
-            exponential_slowdown(t, unit_creation_delay.0 as f64, 5000, 1.005)
-        }
-    });
-    let delay_config = DelayConfig {
-        tick_interval: Duration::from_millis(100),
-        requests_interval: Duration::from_millis(3000),
-        unit_rebroadcast_interval_min: Duration::from_millis(15000),
-        unit_rebroadcast_interval_max: Duration::from_millis(20000),
-        unit_creation_delay,
-    };
-    consensus_config.delay_config = delay_config;
-    consensus_config
-}
-
-fn exponential_slowdown(
-    t: usize,
-    base_delay: f64,
-    start_exp_delay: usize,
-    exp_base: f64,
-) -> Duration {
-    // This gives:
-    // base_delay, for t <= start_exp_delay,
-    // base_delay * exp_base^(t - start_exp_delay), for t > start_exp_delay.
-    let delay = if t < start_exp_delay {
-        base_delay
-    } else {
-        let power = t - start_exp_delay;
-        base_delay * exp_base.powf(power as f64)
-    };
-    let delay = delay.round() as u64;
-    // the above will make it u64::MAX if it exceeds u64
-    Duration::from_millis(delay)
 }

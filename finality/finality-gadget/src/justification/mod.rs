@@ -1,27 +1,6 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::time::Duration;
 
-use stance::SignatureSet;
-use stance_primitives::AuthoritySignature;
+use aleph_primitives::AuthoritySignature;
 use codec::{Decode, Encode};
 use sp_api::{BlockT, NumberFor};
 
@@ -38,16 +17,18 @@ pub use scheduler::{
     JustificationRequestScheduler, JustificationRequestSchedulerImpl, SchedulerActions,
 };
 
+use crate::abft::SignatureSet;
+
 /// A proof of block finality, currently in the form of a sufficiently long list of signatures or a
 /// sudo signature of a block for emergency finalization.
 #[derive(Clone, Encode, Decode, Debug, PartialEq, Eq)]
-pub enum StanceJustification {
+pub enum AlephJustification {
     CommitteeMultisignature(SignatureSet<Signature>),
     EmergencySignature(AuthoritySignature),
 }
 
 pub trait Verifier<B: BlockT> {
-    fn verify(&self, justification: &StanceJustification, hash: B::Hash) -> bool;
+    fn verify(&self, justification: &AlephJustification, hash: B::Hash) -> bool;
 }
 
 pub struct SessionInfo<B: BlockT, V: Verifier<B>> {
@@ -66,7 +47,7 @@ pub trait SessionInfoProvider<B: BlockT, V: Verifier<B>> {
 #[derive(Clone)]
 pub struct JustificationNotification<Block: BlockT> {
     /// The justification itself.
-    pub justification: StanceJustification,
+    pub justification: AlephJustification,
     /// The hash of the finalized block.
     pub hash: Block::Hash,
     /// The ID of the finalized block.
@@ -74,36 +55,29 @@ pub struct JustificationNotification<Block: BlockT> {
 }
 
 #[derive(Clone)]
-pub struct JustificationHandlerConfig<B: BlockT> {
+pub struct JustificationHandlerConfig {
     /// How long should we wait when the session verifier is not yet available.
     verifier_timeout: Duration,
     /// How long should we wait for any notification.
     notification_timeout: Duration,
-    ///Distance (in amount of blocks) between the best and the block we want to request justification
-    min_allowed_delay: NumberFor<B>,
 }
 
-impl<B: BlockT> Default for JustificationHandlerConfig<B> {
+impl Default for JustificationHandlerConfig {
     fn default() -> Self {
         Self {
             verifier_timeout: Duration::from_millis(500),
-            notification_timeout: Duration::from_millis(1000),
-            min_allowed_delay: 3u32.into(),
+            // request justifications slightly more frequently than they're created
+            notification_timeout: Duration::from_millis(800),
         }
     }
 }
 
 #[cfg(test)]
-impl<B: BlockT> JustificationHandlerConfig<B> {
-    pub fn new(
-        verifier_timeout: Duration,
-        notification_timeout: Duration,
-        min_allowed_delay: NumberFor<B>,
-    ) -> Self {
+impl JustificationHandlerConfig {
+    pub fn new(verifier_timeout: Duration, notification_timeout: Duration) -> Self {
         Self {
             verifier_timeout,
             notification_timeout,
-            min_allowed_delay,
         }
     }
 }

@@ -1,34 +1,12 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{convert::TryInto, sync::Arc};
 
-use stance::{
-    Keychain as StanceKeychain, MultiKeychain, NodeCount, NodeIndex, PartialMultisignature,
-    SignatureSet,
-};
-use stance_primitives::{AuthorityId, AuthoritySignature, KEY_TYPE};
+use aleph_primitives::{AuthorityId, AuthoritySignature, KEY_TYPE};
 use codec::{Decode, Encode};
-use sp_core::crypto::KeyTypeId;
+use sp_core::{crypto::KeyTypeId, ed25519::Signature as RawSignature};
 use sp_keystore::{CryptoStore, Error as KeystoreError};
 use sp_runtime::RuntimeAppPublic;
+
+use crate::abft::{NodeCount, NodeIndex, SignatureSet};
 
 #[derive(Debug)]
 pub enum Error {
@@ -37,12 +15,19 @@ pub enum Error {
     Conversion,
 }
 
-#[derive(PartialEq, Eq, Clone, Debug, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash, Decode, Encode)]
 pub struct Signature(AuthoritySignature);
 
 impl From<AuthoritySignature> for Signature {
     fn from(authority_signature: AuthoritySignature) -> Signature {
         Signature(authority_signature)
+    }
+}
+
+// This is here just for a compatibility hack, remove when removing legacy/v1 authentications.
+impl From<[u8; 64]> for Signature {
+    fn from(bytes: [u8; 64]) -> Signature {
+        Signature(RawSignature::from_raw(bytes).into())
     }
 }
 
@@ -56,7 +41,31 @@ pub struct AuthorityPen {
 }
 
 impl AuthorityPen {
-    /// Constructs a new authority cryptography keystore for the given ID.
+    /// Constructs a new authority cryptography keystore for the given ID and key type.
+    /// Will attempt to sign a test message to verify that signing works.
+    /// Returns errors if anything goes wrong during this attempt, otherwise we assume the
+    /// AuthorityPen will work for any future attempts at signing.
+    pub async fn new_with_key_type(
+        authority_id: AuthorityId,
+        keystore: Arc<dyn CryptoStore>,
+        key_type: KeyTypeId,
+    ) -> Result<Self, Error> {
+        // Check whether this signing setup works
+        let _: AuthoritySignature = keystore
+            .sign_with(key_type, &authority_id.clone().into(), b"test")
+            .await
+            .map_err(Error::Keystore)?
+            .ok_or_else(|| Error::KeyMissing(authority_id.clone()))?
+            .try_into()
+            .map_err(|_| Error::Conversion)?;
+        Ok(AuthorityPen {
+            key_type_id: key_type,
+            authority_id,
+            keystore,
+        })
+    }
+
+    /// Constructs a new authority cryptography keystore for the given ID and the aleph key type.
     /// Will attempt to sign a test message to verify that signing works.
     /// Returns errors if anything goes wrong during this attempt, otherwise we assume the
     /// AuthorityPen will work for any future attempts at signing.
@@ -64,19 +73,7 @@ impl AuthorityPen {
         authority_id: AuthorityId,
         keystore: Arc<dyn CryptoStore>,
     ) -> Result<Self, Error> {
-        // Check whether this signing setup works
-        let _: AuthoritySignature = keystore
-            .sign_with(KEY_TYPE, &authority_id.clone().into(), b"test")
-            .await
-            .map_err(Error::Keystore)?
-            .ok_or_else(|| Error::KeyMissing(authority_id.clone()))?
-            .try_into()
-            .map_err(|_| Error::Conversion)?;
-        Ok(AuthorityPen {
-            key_type_id: KEY_TYPE,
-            authority_id,
-            keystore,
-        })
+        Self::new_with_key_type(authority_id, keystore, KEY_TYPE).await
     }
 
     /// Cryptographically signs the message.
@@ -92,7 +89,6 @@ impl AuthorityPen {
         )
     }
 
-    #[allow(dead_code)] // Remove when used in validator network.
     /// Return the associated AuthorityId.
     pub fn authority_id(&self) -> AuthorityId {
         self.authority_id.clone()
@@ -145,72 +141,6 @@ impl AuthorityVerifier {
     }
 }
 
-/// Keychain combines an AuthorityPen and AuthorityVerifier into one object implementing the Stance
-/// MultiKeychain trait.
-#[derive(Clone)]
-pub struct Keychain {
-    id: NodeIndex,
-    authority_pen: AuthorityPen,
-    authority_verifier: AuthorityVerifier,
-}
-
-impl Keychain {
-    /// Constructs a new keychain from a signing contraption and verifier, with the specified node
-    /// index.
-    pub fn new(
-        id: NodeIndex,
-        authority_verifier: AuthorityVerifier,
-        authority_pen: AuthorityPen,
-    ) -> Self {
-        Keychain {
-            id,
-            authority_pen,
-            authority_verifier,
-        }
-    }
-}
-
-impl stance::Index for Keychain {
-    fn index(&self) -> NodeIndex {
-        self.id
-    }
-}
-
-#[async_trait::async_trait]
-impl StanceKeychain for Keychain {
-    type Signature = Signature;
-
-    fn node_count(&self) -> NodeCount {
-        self.authority_verifier.node_count()
-    }
-
-    async fn sign(&self, msg: &[u8]) -> Signature {
-        self.authority_pen.sign(msg).await
-    }
-
-    fn verify(&self, msg: &[u8], sgn: &Signature, index: NodeIndex) -> bool {
-        self.authority_verifier.verify(msg, sgn, index)
-    }
-}
-
-impl MultiKeychain for Keychain {
-    // Using `SignatureSet` is slow, but Substrate has not yet implemented aggregation.
-    // We probably should do this for them at some point.
-    type PartialMultisignature = SignatureSet<Signature>;
-
-    fn bootstrap_multi(
-        &self,
-        signature: &Signature,
-        index: NodeIndex,
-    ) -> Self::PartialMultisignature {
-        SignatureSet::add_signature(SignatureSet::with_size(self.node_count()), signature, index)
-    }
-
-    fn is_complete(&self, msg: &[u8], partial: &Self::PartialMultisignature) -> bool {
-        self.authority_verifier.is_complete(msg, partial)
-    }
-}
-
 /// Old format of signatures, needed for backwards compatibility.
 #[derive(PartialEq, Eq, Clone, Debug, Decode, Encode)]
 pub struct SignatureV1 {
@@ -229,6 +159,7 @@ mod tests {
     use sp_keystore::{testing::KeyStore, CryptoStore};
 
     use super::*;
+    use crate::abft::NodeIndex;
 
     async fn generate_keys(names: &[String]) -> (Vec<AuthorityPen>, AuthorityVerifier) {
         let key_store = Arc::new(KeyStore::new());

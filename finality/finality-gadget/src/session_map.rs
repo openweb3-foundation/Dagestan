@@ -1,26 +1,6 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use stance_primitives::{StanceSessionApi, SessionAuthorityData};
+use aleph_primitives::{AlephSessionApi, SessionAuthorityData};
 use futures::StreamExt;
 use log::{debug, error, trace};
 use sc_client_api::{Backend, FinalityNotification};
@@ -36,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    first_block_of_session, session_id_from_block_num, ClientForStance, SessionId, SessionPeriod,
+    first_block_of_session, session_id_from_block_num, ClientForAleph, SessionId, SessionPeriod,
 };
 
 const PRUNING_THRESHOLD: u32 = 10;
@@ -53,8 +33,8 @@ pub trait AuthorityProvider<B> {
 /// Default implementation of authority provider trait.
 pub struct AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -64,8 +44,8 @@ where
 
 impl<C, B, BE> AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -79,8 +59,8 @@ where
 
 impl<C, B, BE> AuthorityProvider<NumberFor<B>> for AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -130,8 +110,8 @@ pub trait FinalityNotificator<B, N> {
 /// Default implementation of finality notificator trait.
 pub struct FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -141,8 +121,8 @@ where
 
 impl<C, B, BE> FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -157,8 +137,8 @@ where
 impl<C, B, BE> FinalityNotificator<FinalityNotification<B>, NumberFor<B>>
     for FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -198,7 +178,7 @@ impl SharedSessionMap {
         if let Some(senders) = guard.1.remove(&id) {
             for sender in senders {
                 if let Err(e) = sender.send(authority_data.clone()) {
-                    error!(target: "stance-session-updater", "Error while sending notification: {:?}", e);
+                    error!(target: "aleph-session-updater", "Error while sending notification: {:?}", e);
                 }
             }
         }
@@ -303,7 +283,7 @@ where
 
     /// puts authority data for the next session into the session map
     async fn handle_first_block_of_session(&mut self, num: NumberFor<B>, session_id: SessionId) {
-        debug!(target: "stance-session-updater", "Handling first block #{:?} of session {:?}", num, session_id.0);
+        debug!(target: "aleph-session-updater", "Handling first block #{:?} of session {:?}", num, session_id.0);
         let next_session = SessionId(session_id.0 + 1);
         let authority_provider = &self.authority_provider;
         self.session_map
@@ -325,7 +305,7 @@ where
         }
 
         if session_id.0 >= PRUNING_THRESHOLD && session_id.0 % PRUNING_THRESHOLD == 0 {
-            debug!(target: "stance-session-updater", "Pruning session map below session #{:?}", session_id.0 - PRUNING_THRESHOLD);
+            debug!(target: "aleph-session-updater", "Pruning session map below session #{:?}", session_id.0 - PRUNING_THRESHOLD);
             self.session_map
                 .prune_below(SessionId(session_id.0 - PRUNING_THRESHOLD))
                 .await;
@@ -361,7 +341,7 @@ where
 
         while let Some(FinalityNotification { header, .. }) = notifications.next().await {
             let last_finalized = header.number();
-            trace!(target: "stance-session-updater", "got FinalityNotification about #{:?}", last_finalized);
+            trace!(target: "aleph-session-updater", "got FinalityNotification about #{:?}", last_finalized);
 
             let session_id = session_id_from_block_num::<B>(*last_finalized, period);
 

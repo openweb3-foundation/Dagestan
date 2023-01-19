@@ -1,1 +1,1 @@
-A finality gadget using STANCE consensus mechanism from this [Stance Consensus module](../../consensus/README.md).
+A finality gadget using AlephBFT consensus mechanism from this [crate ](https://crates.io/crates/aleph-bft).

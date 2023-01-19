@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -35,39 +15,39 @@ mod status_provider;
 
 pub use chain_info::ChainInfoProvider;
 pub use data_interpreter::OrderedDataInterpreter;
-pub use data_provider::ChainTracker;
+pub use data_provider::{ChainTracker, DataProvider};
 pub use data_store::{DataStore, DataStoreConfig};
-pub use proposal::UnvalidatedStanceProposal;
+pub use proposal::UnvalidatedAlephProposal;
 
-// Maximum number of blocks above the last finalized allowed in an Stance proposal.
+// Maximum number of blocks above the last finalized allowed in an AlephBFT proposal.
 pub const MAX_DATA_BRANCH_LEN: usize = 7;
 
-/// The data ordered by the Stance consensus.
+/// The data ordered by the Aleph consensus.
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct StanceData<B: BlockT> {
-    pub head_proposal: UnvalidatedStanceProposal<B>,
+pub struct AlephData<B: BlockT> {
+    pub head_proposal: UnvalidatedAlephProposal<B>,
 }
 
 // Need to be implemented manually, as deriving does not work (`BlockT` is not `Hash`).
-impl<B: BlockT> Hash for StanceData<B> {
+impl<B: BlockT> Hash for AlephData<B> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.head_proposal.hash(state);
     }
 }
 
 // Clippy does not allow deriving PartialEq when implementing Hash manually
-impl<B: BlockT> PartialEq for StanceData<B> {
+impl<B: BlockT> PartialEq for AlephData<B> {
     fn eq(&self, other: &Self) -> bool {
         self.head_proposal.eq(&other.head_proposal)
     }
 }
 
-impl<B: BlockT> Eq for StanceData<B> {}
+impl<B: BlockT> Eq for AlephData<B> {}
 
-/// A trait allowing to check the data contained in an Stance network message, for the purpose of
+/// A trait allowing to check the data contained in an AlephBFT network message, for the purpose of
 /// data availability checks.
-pub trait StanceNetworkMessage<B: BlockT>: Clone + Debug {
-    fn included_data(&self) -> Vec<StanceData<B>>;
+pub trait AlephNetworkMessage<B: BlockT>: Clone + Debug {
+    fn included_data(&self) -> Vec<AlephData<B>>;
 }
 
 #[derive(Clone, Debug)]

@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{
     collections::{hash_map::Entry::Occupied, BTreeMap, HashMap, HashSet},
     default::Default,
@@ -42,11 +22,17 @@ use sp_runtime::traits::{Block as BlockT, Header as HeaderT, NumberFor, One};
 use crate::{
     data_io::{
         chain_info::{CachedChainInfoProvider, ChainInfoProvider},
-        proposal::{StanceProposal, ProposalStatus},
+        proposal::{AlephProposal, ProposalStatus},
         status_provider::get_proposal_status,
-        StanceNetworkMessage,
+        AlephNetworkMessage,
     },
-    network::{ComponentNetwork, DataNetwork, ReceiverComponent, RequestBlocks, SimpleNetwork},
+    network::{
+        data::{
+            component::{Network as ComponentNetwork, Receiver, SimpleNetwork},
+            Network as DataNetwork,
+        },
+        RequestBlocks,
+    },
     BlockHashNum, SessionBoundaries,
 };
 
@@ -107,13 +93,13 @@ impl<B: BlockT> PendingProposalInfo<B> {
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct PendingMessageInfo<B: BlockT, M: StanceNetworkMessage<B>> {
+pub struct PendingMessageInfo<B: BlockT, M: AlephNetworkMessage<B>> {
     message: M,
     // Data items that we still wait for
-    pending_proposals: HashSet<StanceProposal<B>>,
+    pending_proposals: HashSet<AlephProposal<B>>,
 }
 
-impl<B: BlockT, M: StanceNetworkMessage<B>> PendingMessageInfo<B, M> {
+impl<B: BlockT, M: AlephNetworkMessage<B>> PendingMessageInfo<B, M> {
     fn new(message: M) -> Self {
         PendingMessageInfo {
             message,
@@ -146,11 +132,11 @@ impl Default for DataStoreConfig {
     }
 }
 
-// DataStore is the data availability proxy for the Stance protocol, meaning that whenever we receive
-// a message `m` we must check whether the data `m.included_data()` is available to pass it to Stance.
-// Data is represented by the `StanceData<B>` type -- we refer to the docs of this type to learn what
-// it represents and how honest nodes form `StanceData<B>` instances.
-// An `StanceData<B>` is considered available if it is either `Empty` or it is `HeadProposal(p)` where
+// DataStore is the data availability proxy for the AlephBFT protocol, meaning that whenever we receive
+// a message `m` we must check whether the data `m.included_data()` is available to pass it to AlephBFT.
+// Data is represented by the `AlephData<B>` type -- we refer to the docs of this type to learn what
+// it represents and how honest nodes form `AlephData<B>` instances.
+// An `AlephData<B>` is considered available if it is either `Empty` or it is `HeadProposal(p)` where
 // `p` is a proposal satisfying one of the conditions below:
 // 1) the top block of `p`s branch is available AND the branch is correct (hashes correspond to existing blocks
 //    with correct number and the ancestry is correct) AND the parent of the bottom block in the branch is finalized.
@@ -185,7 +171,7 @@ impl Default for DataStoreConfig {
 //       were missed by the block import subscription.
 //    b) To explicitly request blocks that are the cause of some proposals pending for a long time.
 
-/// This component is used for filtering available data for Stance Network.
+/// This component is used for filtering available data for Aleph Network.
 /// It needs to be started by calling the run method.
 pub struct DataStore<B, C, RB, Message, R>
 where
@@ -193,17 +179,17 @@ where
     C: HeaderBackend<B> + BlockchainEvents<B> + Send + Sync + 'static,
     RB: RequestBlocks<B> + 'static,
     Message:
-        StanceNetworkMessage<B> + std::fmt::Debug + Send + Sync + Clone + codec::Codec + 'static,
-    R: ReceiverComponent<Message>,
+        AlephNetworkMessage<B> + std::fmt::Debug + Send + Sync + Clone + codec::Codec + 'static,
+    R: Receiver<Message>,
 {
     next_free_id: MessageId,
-    pending_proposals: HashMap<StanceProposal<B>, PendingProposalInfo<B>>,
-    event_triggers: HashMap<ChainEvent<B>, HashSet<StanceProposal<B>>>,
+    pending_proposals: HashMap<AlephProposal<B>, PendingProposalInfo<B>>,
+    event_triggers: HashMap<ChainEvent<B>, HashSet<AlephProposal<B>>>,
     // We use BtreeMap instead of HashMap to be able to fetch the Message with lowest MessageId
     // when pruning messages.
     pending_messages: BTreeMap<MessageId, PendingMessageInfo<B, Message>>,
     chain_info_provider: CachedChainInfoProvider<B, Arc<C>>,
-    available_proposals_cache: LruCache<StanceProposal<B>, ProposalStatus<B>>,
+    available_proposals_cache: LruCache<AlephProposal<B>, ProposalStatus<B>>,
     num_triggers_registered_since_last_pruning: usize,
     highest_finalized_num: NumberFor<B>,
     session_boundaries: SessionBoundaries<B>,
@@ -211,7 +197,7 @@ where
     block_requester: RB,
     config: DataStoreConfig,
     messages_from_network: R,
-    messages_for_stance: UnboundedSender<Message>,
+    messages_for_aleph: UnboundedSender<Message>,
 }
 
 impl<B, C, RB, Message, R> DataStore<B, C, RB, Message, R>
@@ -220,8 +206,8 @@ where
     C: HeaderBackend<B> + BlockchainEvents<B> + Send + Sync + 'static,
     RB: RequestBlocks<B> + 'static,
     Message:
-        StanceNetworkMessage<B> + std::fmt::Debug + Send + Sync + Clone + codec::Codec + 'static,
-    R: ReceiverComponent<Message>,
+        AlephNetworkMessage<B> + std::fmt::Debug + Send + Sync + Clone + codec::Codec + 'static,
+    R: Receiver<Message>,
 {
     /// Returns a struct to be run and a network that outputs messages filtered as appropriate
     pub fn new<N: ComponentNetwork<Message, R = R>>(
@@ -231,7 +217,7 @@ where
         config: DataStoreConfig,
         component_network: N,
     ) -> (Self, impl DataNetwork<Message>) {
-        let (messages_for_stance, messages_from_data_store) = mpsc::unbounded();
+        let (messages_for_aleph, messages_from_data_store) = mpsc::unbounded();
         let (messages_to_network, messages_from_network) = component_network.into();
         let status = client.info();
         let chain_info_provider = CachedChainInfoProvider::new(client.clone(), Default::default());
@@ -252,7 +238,7 @@ where
                 block_requester,
                 config,
                 messages_from_network,
-                messages_for_stance,
+                messages_for_aleph,
             },
             SimpleNetwork::new(messages_from_data_store, messages_to_network),
         )
@@ -267,15 +253,15 @@ where
             self.prune_triggers();
             tokio::select! {
                 Some(message) = self.messages_from_network.next() => {
-                    trace!(target: "stance-data-store", "Received message at Data Store {:?}", message);
+                    trace!(target: "aleph-data-store", "Received message at Data Store {:?}", message);
                     self.on_message_received(message);
                 }
                 Some(block) = &mut import_stream.next() => {
-                    trace!(target: "stance-data-store", "Block import notification at Data Store for block {:?}", block);
+                    trace!(target: "aleph-data-store", "Block import notification at Data Store for block {:?}", block);
                     self.on_block_imported((block.header.hash(), *block.header.number()).into());
                 },
                 Some(block) = &mut finality_stream.next() => {
-                    trace!(target: "stance-data-store", "Finalized block import notification at Data Store for block {:?}", block);
+                    trace!(target: "aleph-data-store", "Finalized block import notification at Data Store for block {:?}", block);
                     self.on_block_finalized((block.header.hash(), *block.header.number()).into());
                 }
                 _ = &mut maintenance_clock => {
@@ -283,7 +269,7 @@ where
                     maintenance_clock = Delay::new(self.config.periodic_maintenance_interval);
                 }
                 _ = &mut exit => {
-                    debug!(target: "stance-data-store", "Data Store task received exit signal. Terminating.");
+                    debug!(target: "aleph-data-store", "Data Store task received exit signal. Terminating.");
                     break;
                 }
             }
@@ -307,13 +293,13 @@ where
             .collect();
         match proposals_with_timestamps.len() {
             0 => {
-                trace!(target: "stance-data-store", "No pending proposals in data store during maintenance.");
+                trace!(target: "aleph-data-store", "No pending proposals in data store during maintenance.");
             }
             1..=5 => {
-                info!(target: "stance-data-store", "Data Store maintenance. Awaiting {:?} proposals: {:?}",proposals_with_timestamps.len(), proposals_with_timestamps);
+                info!(target: "aleph-data-store", "Data Store maintenance. Awaiting {:?} proposals: {:?}",proposals_with_timestamps.len(), proposals_with_timestamps);
             }
             _ => {
-                info!(target: "stance-data-store", "Data Store maintenance. Awaiting {:?} proposals: (showing 5 initial only) {:?}",proposals_with_timestamps.len(), &proposals_with_timestamps[..5]);
+                info!(target: "aleph-data-store", "Data Store maintenance. Awaiting {:?} proposals: (showing 5 initial only) {:?}",proposals_with_timestamps.len(), &proposals_with_timestamps[..5]);
             }
         }
 
@@ -330,7 +316,7 @@ where
 
             let block = proposal.top_block();
             if !self.chain_info_provider.is_block_imported(&block) {
-                debug!(target: "stance-data-store", "Requesting a stale block {:?} after it has been missing for {:?} secs.", block, time_waiting.as_secs());
+                debug!(target: "aleph-data-store", "Requesting a stale block {:?} after it has been missing for {:?} secs.", block, time_waiting.as_secs());
                 self.block_requester
                     .request_stale_block(block.hash, block.num);
                 continue;
@@ -342,21 +328,21 @@ where
             let parent_hash = match self.chain_info_provider.get_parent_hash(&bottom_block) {
                 Ok(ph) => ph,
                 _ => {
-                    warn!(target: "stance-data-store", "Expected the block below the proposal {:?} to be imported", proposal);
+                    warn!(target: "aleph-data-store", "Expected the block below the proposal {:?} to be imported", proposal);
                     continue;
                 }
             };
             let parent_num = bottom_block.num - NumberFor::<B>::one();
             if let Ok(finalized_block) = self.chain_info_provider.get_finalized_at(parent_num) {
                 if parent_hash != finalized_block.hash {
-                    warn!(target: "stance-data-store", "The proposal {:?} is pending because the parent: \
+                    warn!(target: "aleph-data-store", "The proposal {:?} is pending because the parent: \
                         {:?}, does not agree with the block finalized at this height: {:?}.", proposal, parent_hash, finalized_block);
                 } else {
-                    warn!(target: "stance-data-store", "The proposal {:?} is pending even though blocks \
+                    warn!(target: "aleph-data-store", "The proposal {:?} is pending even though blocks \
                             have been imported and parent was finalized.", proposal);
                 }
             } else {
-                debug!(target: "stance-data-store", "Requesting a justification for block {:?} {:?} \
+                debug!(target: "aleph-data-store", "Requesting a justification for block {:?} {:?} \
                         after it has been missing for {:?} secs.", parent_num, parent_hash, time_waiting.as_secs());
                 self.block_requester
                     .request_justification(&parent_hash, parent_num);
@@ -366,7 +352,7 @@ where
 
     fn register_block_import_trigger(
         &mut self,
-        proposal: &StanceProposal<B>,
+        proposal: &AlephProposal<B>,
         block: &BlockHashNum<B>,
     ) {
         self.num_triggers_registered_since_last_pruning += 1;
@@ -376,7 +362,7 @@ where
             .insert(proposal.clone());
     }
 
-    fn register_finality_trigger(&mut self, proposal: &StanceProposal<B>, number: NumberFor<B>) {
+    fn register_finality_trigger(&mut self, proposal: &AlephProposal<B>, number: NumberFor<B>) {
         self.num_triggers_registered_since_last_pruning += 1;
         if number > self.highest_finalized_num {
             self.event_triggers
@@ -386,7 +372,7 @@ where
         }
     }
 
-    fn register_next_finality_trigger(&mut self, proposal: &StanceProposal<B>) {
+    fn register_next_finality_trigger(&mut self, proposal: &AlephProposal<B>) {
         if self.highest_finalized_num < proposal.number_below_branch() {
             self.register_finality_trigger(proposal, proposal.number_below_branch());
         } else if self.highest_finalized_num < proposal.number_top_block() {
@@ -427,7 +413,7 @@ where
         }
     }
 
-    fn on_proposal_available(&mut self, proposal: &StanceProposal<B>) {
+    fn on_proposal_available(&mut self, proposal: &AlephProposal<B>) {
         if let Some(proposal_info) = self.pending_proposals.remove(proposal) {
             for id in proposal_info.messages {
                 self.remove_proposal_from_pending_message(proposal, id);
@@ -437,7 +423,7 @@ where
 
     // Makes an availability check for `data` and updates its status. Outputs whether the bump resulted in
     // this proposal becoming available.
-    fn bump_proposal(&mut self, proposal: &StanceProposal<B>) -> bool {
+    fn bump_proposal(&mut self, proposal: &AlephProposal<B>) -> bool {
         // Some minor inefficiencies in HashMap access below because of borrow checker.
         let old_status = match self.pending_proposals.get(proposal) {
             None => {
@@ -479,7 +465,7 @@ where
     // Outputs the current status of the proposal based on the `old_status` (for optimization).
     fn check_proposal_availability(
         &mut self,
-        proposal: &StanceProposal<B>,
+        proposal: &AlephProposal<B>,
         old_status: Option<&ProposalStatus<B>>,
     ) -> ProposalStatus<B> {
         if let Some(status) = self.available_proposals_cache.get(proposal) {
@@ -507,7 +493,7 @@ where
     // If the proposal is available, message_info is not modified.
     fn add_message_proposal_dependency(
         &mut self,
-        proposal: &StanceProposal<B>,
+        proposal: &AlephProposal<B>,
         message_info: &mut PendingMessageInfo<B, Message>,
         id: MessageId,
     ) {
@@ -551,9 +537,9 @@ where
     }
 
     fn on_message_dependencies_resolved(&self, message: Message) {
-        trace!(target: "stance-data-store", "Sending message from DataStore {:?}", message);
-        if let Err(e) = self.messages_for_stance.unbounded_send(message) {
-            error!(target: "stance-data-store", "Unable to send a ready message from DataStore {}", e);
+        trace!(target: "aleph-data-store", "Sending message from DataStore {:?}", message);
+        if let Err(e) = self.messages_for_aleph.unbounded_send(message) {
+            error!(target: "aleph-data-store", "Unable to send a ready message from DataStore {}", e);
         }
     }
 
@@ -564,11 +550,11 @@ where
 
     // This is called upon a proposal being available -- we remove it from the set of
     // proposals a message waits for.
-    fn remove_proposal_from_pending_message(&mut self, proposal: &StanceProposal<B>, id: MessageId) {
+    fn remove_proposal_from_pending_message(&mut self, proposal: &AlephProposal<B>, id: MessageId) {
         let mut message_info = match self.pending_messages.remove(&id) {
             Some(message_info) => message_info,
             None => {
-                warn!(target: "stance-data-store", "Message {:?} not found when resolving a proposal dependency {:?}.", id, proposal);
+                warn!(target: "aleph-data-store", "Message {:?} not found when resolving a proposal dependency {:?}.", id, proposal);
                 return;
             }
         };
@@ -583,7 +569,7 @@ where
 
     fn remove_message_id_from_pending_proposal(
         &mut self,
-        proposal: &StanceProposal<B>,
+        proposal: &AlephProposal<B>,
         id: MessageId,
     ) {
         if let Occupied(mut proposal_entry) = self.pending_proposals.entry(proposal.clone()) {
@@ -593,7 +579,7 @@ where
                 proposal_entry.remove();
             }
         } else {
-            warn!(target: "stance-data-store", "Proposal {:?} with id {:?} referenced in message does not exist", proposal, id);
+            warn!(target: "aleph-data-store", "Proposal {:?} with id {:?} referenced in message does not exist", proposal, id);
         }
     }
 
@@ -613,7 +599,7 @@ where
                 false
             }
         } else {
-            warn!(target: "stance-data-store", "Tried to prune a message but there are none pending.");
+            warn!(target: "aleph-data-store", "Tried to prune a message but there are none pending.");
             false
         }
     }
@@ -625,7 +611,7 @@ where
             || self.pending_proposals.len() > self.config.max_proposals_pending
         {
             if !self.prune_single_message() {
-                warn!(target: "stance-data-store", "Message pruning in DataStore failed. Moving on.");
+                warn!(target: "aleph-data-store", "Message pruning in DataStore failed. Moving on.");
                 break;
             }
         }
@@ -651,7 +637,7 @@ where
             match unvalidated_proposal.validate_bounds(&self.session_boundaries) {
                 Ok(proposal) => proposals.push(proposal),
                 Err(error) => {
-                    warn!(target: "stance-data-store", "Message {:?} dropped as it contains \
+                    warn!(target: "aleph-data-store", "Message {:?} dropped as it contains \
                             proposal {:?} not within bounds ({:?}).", message, unvalidated_proposal, error);
                     return;
                 }

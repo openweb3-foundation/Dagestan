@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use core::result::Result;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -36,7 +16,7 @@ pub trait BlockFinalizer<B: Block> {
     ) -> Result<(), Error>;
 }
 
-pub struct StanceFinalizer<B, BE, C>
+pub struct AlephFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
@@ -46,21 +26,21 @@ where
     phantom: PhantomData<(B, BE)>,
 }
 
-impl<B, BE, C> StanceFinalizer<B, BE, C>
+impl<B, BE, C> AlephFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
     C: HeaderBackend<B> + LockImportRun<B, BE> + Finalizer<B, BE>,
 {
     pub(crate) fn new(client: Arc<C>) -> Self {
-        StanceFinalizer {
+        AlephFinalizer {
             client,
             phantom: PhantomData,
         }
     }
 }
 
-impl<B, BE, C> BlockFinalizer<B> for StanceFinalizer<B, BE, C>
+impl<B, BE, C> BlockFinalizer<B> for AlephFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
@@ -74,11 +54,11 @@ where
     ) -> Result<(), Error> {
         let status = self.client.info();
         if status.finalized_number >= block_number {
-            warn!(target: "stance-finality", "trying to finalize a block with hash {} and number {}
+            warn!(target: "aleph-finality", "trying to finalize a block with hash {} and number {}
                that is not greater than already finalized {}", hash, block_number, status.finalized_number);
         }
 
-        debug!(target: "stance-finality", "Finalizing block with hash {:?} and number {:?}. Previous best: #{:?}.", hash, block_number, status.finalized_number);
+        debug!(target: "aleph-finality", "Finalizing block with hash {:?} and number {:?}. Previous best: #{:?}.", hash, block_number, status.finalized_number);
 
         let update_res = self.client.lock_import_and_run(|import_op| {
             // NOTE: all other finalization logic should come here, inside the lock
@@ -86,7 +66,7 @@ where
                 .apply_finality(import_op, BlockId::Hash(hash), justification, true)
         });
         let status = self.client.info();
-        debug!(target: "stance-finality", "Attempted to finalize block with hash {:?}. Current best: #{:?}.", hash, status.finalized_number);
+        debug!(target: "aleph-finality", "Attempted to finalize block with hash {:?}. Current best: #{:?}.", hash, status.finalized_number);
         update_res
     }
 }

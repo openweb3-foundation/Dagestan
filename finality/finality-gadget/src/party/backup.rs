@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{
     fmt, fs,
     fs::File,
@@ -62,14 +42,14 @@ impl From<io::Error> for BackupLoadError {
 
 impl std::error::Error for BackupLoadError {}
 
-pub type Saver = Box<dyn Write + Send>;
-pub type Loader = Box<dyn Read + Send>;
+pub type Saver = Box<dyn Write + Send + Sync>;
+pub type Loader = Box<dyn Read + Send + Sync>;
 pub type ABFTBackup = (Saver, Loader);
 
 /// Find all `*.abfts` files at `session_path` and return their indexes sorted, if all are present.
 fn get_session_backup_idxs(session_path: &Path) -> Result<Vec<usize>, BackupLoadError> {
-    fs::create_dir_all(&session_path)?;
-    let mut session_backups: Vec<_> = fs::read_dir(&session_path)?
+    fs::create_dir_all(session_path)?;
+    let mut session_backups: Vec<_> = fs::read_dir(session_path)?
         .filter_map(|r| r.ok())
         .filter_map(|x| x.file_name().into_string().ok())
         .filter_map(|s| usize::from_str(s.strip_suffix(BACKUP_FILE_EXTENSION)?).ok())
@@ -118,24 +98,24 @@ pub fn rotate(
     backup_path: Option<PathBuf>,
     session_id: u32,
 ) -> Result<ABFTBackup, BackupLoadError> {
-    debug!(target: "stance-party", "Loading Stance backup for session {:?}", session_id);
+    debug!(target: "aleph-party", "Loading AlephBFT backup for session {:?}", session_id);
     let session_path = if let Some(path) = backup_path {
         path.join(format!("{}", session_id))
     } else {
-        debug!(target: "stance-party", "Passing empty backup for session {:?} as no backup argument was provided", session_id);
+        debug!(target: "aleph-party", "Passing empty backup for session {:?} as no backup argument was provided", session_id);
         return Ok((Box::new(io::sink()), Box::new(io::empty())));
     };
-    debug!(target: "stance-party", "Loading backup for session {:?} at path {:?}", session_id, session_path);
+    debug!(target: "aleph-party", "Loading backup for session {:?} at path {:?}", session_id, session_path);
 
     let session_backup_idxs = get_session_backup_idxs(&session_path)?;
 
     let backup_loader = load_backup(&session_path, &session_backup_idxs)?;
 
     let next_backup_path = get_next_path(&session_path, &session_backup_idxs);
-    debug!(target: "stance-party", "Loaded backup for session {:?}. Creating new backup file at {:?}", session_id, next_backup_path);
+    debug!(target: "aleph-party", "Loaded backup for session {:?}. Creating new backup file at {:?}", session_id, next_backup_path);
     let backup_saver = Box::new(File::create(next_backup_path)?);
 
-    debug!(target: "stance-party", "Backup rotation done for session {:?}", session_id);
+    debug!(target: "aleph-party", "Backup rotation done for session {:?}", session_id);
     Ok((backup_saver, backup_loader))
 }
 
@@ -152,13 +132,13 @@ pub fn remove(path: Option<PathBuf>, session_id: u32) {
         Some(path) => path.join(session_id.to_string()),
         None => return,
     };
-    match fs::remove_dir_all(&path) {
+    match fs::remove_dir_all(path) {
         Ok(()) => {
-            debug!(target: "stance-party", "Removed backup for session {}", session_id);
+            debug!(target: "aleph-party", "Removed backup for session {}", session_id);
         }
         Err(err) => {
             if err.kind() != io::ErrorKind::NotFound {
-                warn!(target: "stance-party", "Error cleaning up backup for session {}: {}", session_id, err);
+                warn!(target: "aleph-party", "Error cleaning up backup for session {}: {}", session_id, err);
             }
         }
     }

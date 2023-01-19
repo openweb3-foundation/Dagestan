@@ -1,32 +1,8 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use futures::{channel::mpsc, Stream, StreamExt};
 use futures_timer::Delay;
 use log::{debug, error};
-use sc_client_api::HeaderBackend;
 use sp_api::BlockT;
 use sp_runtime::traits::Header;
 use tokio::time::timeout;
@@ -37,53 +13,52 @@ use crate::{
         requester::BlockRequester, JustificationHandlerConfig, JustificationNotification,
         JustificationRequestScheduler, SessionInfo, SessionInfoProvider, Verifier,
     },
-    network, Metrics, STATUS_REPORT_INTERVAL,
+    network, BlockchainBackend, Metrics, STATUS_REPORT_INTERVAL,
 };
 
-pub struct JustificationHandler<B, V, RB, C, S, SI, F>
+pub struct JustificationHandler<B, V, RB, S, SI, F, BB>
 where
     B: BlockT,
     V: Verifier<B>,
     RB: network::RequestBlocks<B> + 'static,
-    C: HeaderBackend<B> + Send + Sync + 'static,
     S: JustificationRequestScheduler,
     SI: SessionInfoProvider<B, V>,
     F: BlockFinalizer<B>,
+    BB: BlockchainBackend<B> + 'static,
 {
     session_info_provider: SI,
-    block_requester: BlockRequester<B, RB, C, S, F, V>,
+    block_requester: BlockRequester<B, RB, S, F, V, BB>,
     verifier_timeout: Duration,
     notification_timeout: Duration,
 }
 
-impl<B, V, RB, C, S, SI, F> JustificationHandler<B, V, RB, C, S, SI, F>
+impl<B, V, RB, S, SI, F, BB> JustificationHandler<B, V, RB, S, SI, F, BB>
 where
     B: BlockT,
     V: Verifier<B>,
     RB: network::RequestBlocks<B> + 'static,
-    C: HeaderBackend<B> + Send + Sync + 'static,
     S: JustificationRequestScheduler,
     SI: SessionInfoProvider<B, V>,
     F: BlockFinalizer<B>,
+    BB: BlockchainBackend<B> + 'static,
 {
     pub fn new(
         session_info_provider: SI,
         block_requester: RB,
-        client: Arc<C>,
+        blockchain_backend: BB,
         finalizer: F,
         justification_request_scheduler: S,
         metrics: Option<Metrics<<B::Header as Header>::Hash>>,
-        justification_handler_config: JustificationHandlerConfig<B>,
+        justification_handler_config: JustificationHandlerConfig,
     ) -> Self {
         Self {
             session_info_provider,
             block_requester: BlockRequester::new(
                 block_requester,
-                client,
+                blockchain_backend,
                 finalizer,
                 justification_request_scheduler,
                 metrics,
-                justification_handler_config.min_allowed_delay,
             ),
             verifier_timeout: justification_handler_config.verifier_timeout,
             notification_timeout: justification_handler_config.notification_timeout,
@@ -111,7 +86,7 @@ where
                 .for_block_num(last_finalized_number + 1u32.into())
                 .await;
             if verifier.is_none() {
-                debug!(target: "stance-justification", "Verifier for session {:?} not yet available. Waiting {}ms and will try again ...", current_session, self.verifier_timeout.as_millis());
+                debug!(target: "aleph-justification", "Verifier for session {:?} not yet available. Waiting {}ms and will try again ...", current_session, self.verifier_timeout.as_millis());
                 Delay::new(self.verifier_timeout).await;
                 continue;
             }
@@ -147,10 +122,10 @@ fn wrap_channel_with_logging<B: BlockT>(
 ) -> impl Stream<Item = JustificationNotification<B>> {
     channel
         .inspect(move |_| {
-            debug!(target: "stance-justification", "Got justification ({})", label);
+            debug!(target: "aleph-justification", "Got justification ({})", label);
         })
         .chain(futures::stream::iter(std::iter::from_fn(move || {
-            error!(target: "stance-justification", "Justification ({}) stream ended.", label);
+            error!(target: "aleph-justification", "Justification ({}) stream ended.", label);
             None
         })))
 }

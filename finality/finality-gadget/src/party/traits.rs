@@ -1,24 +1,4 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use async_trait::async_trait;
 use sp_runtime::traits::{Block as BlockT, NumberFor};
@@ -54,7 +34,7 @@ pub trait ChainState<B: Block> {
 #[async_trait]
 /// Abstraction over session related tasks.
 pub trait NodeSessionManager {
-    type Error: Debug;
+    type Error: Display;
 
     /// Spawns every task needed for an authority to run in a session.
     async fn spawn_authority_task_for_session(
@@ -69,6 +49,7 @@ pub trait NodeSessionManager {
     async fn early_start_validator_session(
         &self,
         session: SessionId,
+        node_id: NodeIndex,
         authorities: &[AuthorityId],
     ) -> Result<(), Self::Error>;
 
@@ -91,7 +72,7 @@ pub trait SyncState<B: Block> {
     ///
     /// Like [`RequestBlocks::is_major_syncing`][1].
     ///
-    /// [1]: finality_stance::network::RequestBlocks::is_major_syncing
+    /// [1]: finality_aleph::network::RequestBlocks::is_major_syncing
     fn is_major_syncing(&self) -> bool;
 }
 

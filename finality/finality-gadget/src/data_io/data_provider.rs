@@ -1,26 +1,5 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{sync::Arc, time::Duration};
 
-use async_trait::async_trait;
 use futures::channel::oneshot;
 use log::{debug, warn};
 use parking_lot::Mutex;
@@ -33,7 +12,7 @@ use sp_runtime::{
 };
 
 use crate::{
-    data_io::{proposal::UnvalidatedStanceProposal, StanceData, MAX_DATA_BRANCH_LEN},
+    data_io::{proposal::UnvalidatedAlephProposal, AlephData, MAX_DATA_BRANCH_LEN},
     metrics::Checkpoint,
     BlockHashNum, Metrics, SessionBoundaries,
 };
@@ -74,7 +53,7 @@ where
     {
         Some((*header.parent_hash(), block.num - <NumberFor<B>>::one()).into())
     } else {
-        warn!(target: "stance-data-store", "Trying to fetch the parent of an unknown block {:?}.", block);
+        warn!(target: "aleph-data-store", "Trying to fetch the parent of an unknown block {:?}.", block);
         None
     }
 }
@@ -83,7 +62,7 @@ pub fn get_proposal<B, C>(
     client: &C,
     best_block: BlockHashNum<B>,
     finalized_block: BlockHashNum<B>,
-) -> Result<StanceData<B>, ()>
+) -> Result<AlephData<B>, ()>
 where
     B: BlockT,
     C: HeaderBackend<B>,
@@ -102,13 +81,13 @@ where
         let num_last = finalized_block.num + <NumberFor<B>>::saturated_from(branch.len());
         // The hashes in `branch` are ordered from top to bottom -- need to reverse.
         branch.reverse();
-        Ok(StanceData {
-            head_proposal: UnvalidatedStanceProposal::new(branch, num_last),
+        Ok(AlephData {
+            head_proposal: UnvalidatedAlephProposal::new(branch, num_last),
         })
     } else {
         // By backtracking from the best block we reached a block conflicting with best finalized.
         // This is most likely a bug, or some extremely unlikely synchronization issue of the client.
-        warn!(target: "stance-data-store", "Error computing proposal. Conflicting blocks: {:?}, finalized {:?}", curr_block, finalized_block);
+        warn!(target: "aleph-data-store", "Error computing proposal. Conflicting blocks: {:?}, finalized {:?}", curr_block, finalized_block);
         Err(())
     }
 }
@@ -133,7 +112,7 @@ struct ChainInfo<B: BlockT> {
     highest_finalized: BlockHashNum<B>,
 }
 
-/// ChainTracker keeps track of the best_block in a given session and allows to generate `StanceData`.
+/// ChainTracker keeps track of the best_block in a given session and allows to generate `AlephData`.
 /// Internally it frequently updates a `data_to_propose` field that is shared with a `DataProvider`, which
 /// in turn is a tiny wrapper around this single shared resource that takes out `data_to_propose` whenever
 /// `get_data` is called.
@@ -145,7 +124,7 @@ where
 {
     select_chain: SC,
     client: Arc<C>,
-    data_to_propose: Arc<Mutex<Option<StanceData<B>>>>,
+    data_to_propose: Arc<Mutex<Option<AlephData<B>>>>,
     session_boundaries: SessionBoundaries<B>,
     prev_chain_info: Option<ChainInfo<B>>,
     config: ChainTrackerConfig,
@@ -163,7 +142,7 @@ where
         session_boundaries: SessionBoundaries<B>,
         config: ChainTrackerConfig,
         metrics: Option<Metrics<<B::Header as HeaderT>::Hash>>,
-    ) -> (Self, impl stance::DataProvider<StanceData<B>>) {
+    ) -> (Self, DataProvider<B>) {
         let data_to_propose = Arc::new(Mutex::new(None));
         (
             ChainTracker {
@@ -183,7 +162,7 @@ where
 
     fn update_data(&mut self, best_block_in_session: &BlockHashNum<B>) {
         // We use best_block_in_session argument and the highest_finalized block from the client and compute
-        // the corresponding `StanceData<B>` in `data_to_propose` for Stance. To not recompute this many
+        // the corresponding `AlephData<B>` in `data_to_propose` for AlephBFT. To not recompute this many
         // times we remember these "inputs" in `prev_chain_info` and upon match we leave the old value
         // of `data_to_propose` unaffected.
 
@@ -220,7 +199,7 @@ where
         }
         if best_block_in_session.num < finalized_block.num {
             // Because of the client synchronization, in extremely rare cases this could happen.
-            warn!(target: "stance-data-store", "Error updating data. best_block {:?} is lower than finalized {:?}.", best_block_in_session, finalized_block);
+            warn!(target: "aleph-data-store", "Error updating data. best_block {:?} is lower than finalized {:?}.", best_block_in_session, finalized_block);
             return;
         }
 
@@ -302,7 +281,7 @@ where
 
                 }
                 _ = &mut exit => {
-                    debug!(target: "stance-data-store", "Task for refreshing best chain received exit signal. Terminating.");
+                    debug!(target: "aleph-data-store", "Task for refreshing best chain received exit signal. Terminating.");
                     return;
                 }
             }
@@ -310,10 +289,10 @@ where
     }
 }
 
-/// Provides data to Stance for ordering.
+/// Provides data to AlephBFT for ordering.
 #[derive(Clone)]
-struct DataProvider<B: BlockT> {
-    data_to_propose: Arc<Mutex<Option<StanceData<B>>>>,
+pub struct DataProvider<B: BlockT> {
+    data_to_propose: Arc<Mutex<Option<AlephData<B>>>>,
     metrics: Option<Metrics<<B::Header as HeaderT>::Hash>>,
 }
 
@@ -325,9 +304,8 @@ struct DataProvider<B: BlockT> {
 //    then the node proposes `Empty`, otherwise the node proposes a branch extending from one block above
 //    last finalized till `best_block` with the restriction that the branch must be truncated to length
 //    at most MAX_DATA_BRANCH_LEN.
-#[async_trait]
-impl<B: BlockT> stance::DataProvider<StanceData<B>> for DataProvider<B> {
-    async fn get_data(&mut self) -> Option<StanceData<B>> {
+impl<B: BlockT> DataProvider<B> {
+    pub async fn get_data(&mut self) -> Option<AlephData<B>> {
         let data_to_propose = (*self.data_to_propose.lock()).take();
 
         if let Some(data) = &data_to_propose {
@@ -338,10 +316,10 @@ impl<B: BlockT> stance::DataProvider<StanceData<B>> for DataProvider<B> {
                     Checkpoint::Ordering,
                 );
             }
-            debug!(target: "stance-data-store", "Outputting {:?} in get_data", data);
+            debug!(target: "aleph-data-store", "Outputting {:?} in get_data", data);
         };
 
-        return data_to_propose;
+        data_to_propose
     }
 }
 
@@ -358,9 +336,9 @@ mod tests {
     use crate::{
         data_io::{
             data_provider::{ChainTracker, ChainTrackerConfig},
-            StanceData, MAX_DATA_BRANCH_LEN,
+            DataProvider, MAX_DATA_BRANCH_LEN,
         },
-        testing::{client_chain_builder::ClientChainBuilder, mocks::stance_data_from_blocks},
+        testing::{client_chain_builder::ClientChainBuilder, mocks::aleph_data_from_blocks},
         SessionBoundaries, SessionId, SessionPeriod,
     };
 
@@ -373,7 +351,7 @@ mod tests {
         impl Future<Output = ()>,
         oneshot::Sender<()>,
         ClientChainBuilder,
-        impl stance::DataProvider<StanceData<Block>>,
+        DataProvider<Block>,
     ) {
         let (client, select_chain) = TestClientBuilder::new().build_with_longest_chain();
         let client = Arc::new(client);
@@ -408,12 +386,12 @@ mod tests {
     async fn run_test<F, S>(scenario: S)
     where
         F: Future,
-        S: FnOnce(ClientChainBuilder, Box<dyn stance::DataProvider<StanceData<Block>>>) -> F,
+        S: FnOnce(ClientChainBuilder, DataProvider<Block>) -> F,
     {
         let (task_handle, exit, chain_builder, data_provider) = prepare_chain_tracker_test();
         let chain_tracker_handle = tokio::spawn(task_handle);
 
-        scenario(chain_builder, Box::new(data_provider)).await;
+        scenario(chain_builder, data_provider).await;
 
         exit.send(()).unwrap();
         chain_tracker_handle
@@ -439,7 +417,7 @@ mod tests {
             sleep_enough().await;
 
             let data = data_provider.get_data().await.unwrap();
-            let expected_data = stance_data_from_blocks(blocks[..MAX_DATA_BRANCH_LEN].to_vec());
+            let expected_data = aleph_data_from_blocks(blocks[..MAX_DATA_BRANCH_LEN].to_vec());
             assert_eq!(data, expected_data);
         })
         .await;
@@ -456,7 +434,7 @@ mod tests {
                 sleep_enough().await;
                 let data = data_provider.get_data().await.unwrap();
                 let expected_data =
-                    stance_data_from_blocks(blocks[height..(MAX_DATA_BRANCH_LEN + height)].to_vec());
+                    aleph_data_from_blocks(blocks[height..(MAX_DATA_BRANCH_LEN + height)].to_vec());
                 assert_eq!(data, expected_data);
             }
             chain_builder.finalize_block(&blocks.last().unwrap().header.hash());
@@ -480,7 +458,7 @@ mod tests {
                 .await;
             sleep_enough().await;
             let data = data_provider.get_data().await.unwrap();
-            let expected_data = stance_data_from_blocks(blocks[0..MAX_DATA_BRANCH_LEN].to_vec());
+            let expected_data = aleph_data_from_blocks(blocks[0..MAX_DATA_BRANCH_LEN].to_vec());
             assert_eq!(data, expected_data);
 
             // Finalize a block beyond the last block in the session.

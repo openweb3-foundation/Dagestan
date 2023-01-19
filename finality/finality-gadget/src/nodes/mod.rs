@@ -1,34 +1,15 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 mod nonvalidator_node;
 mod validator_node;
 
 use std::{future::Future, sync::Arc};
 
-use stance_primitives::{AuthorityId, SessionAuthorityData};
+use aleph_primitives::{AuthorityId, SessionAuthorityData};
 use codec::Encode;
 use log::warn;
 pub use nonvalidator_node::run_nonvalidator_node;
 use sc_client_api::Backend;
-use sc_network::{ExHashT, NetworkService};
+use sc_network::NetworkService;
+use sc_network_common::ExHashT;
 use sp_runtime::{
     traits::{Block, Header, NumberFor},
     RuntimeAppPublic,
@@ -37,17 +18,22 @@ pub use validator_node::run_validator_node;
 
 use crate::{
     crypto::AuthorityVerifier,
-    finalization::StanceFinalizer,
+    finalization::AlephFinalizer,
     justification::{
-        StanceJustification, JustificationHandler, JustificationRequestSchedulerImpl, SessionInfo,
+        AlephJustification, JustificationHandler, JustificationRequestSchedulerImpl, SessionInfo,
         SessionInfoProvider, Verifier,
     },
     last_block_of_session, mpsc,
     mpsc::UnboundedSender,
     session_id_from_block_num,
     session_map::ReadOnlySessionMap,
-    JustificationNotification, Metrics, MillisecsPerBlock, SessionPeriod,
+    BlockchainBackend, JustificationNotification, Metrics, MillisecsPerBlock, SessionPeriod,
 };
+
+#[cfg(test)]
+pub mod testing {
+    pub use super::validator_node::new_pen;
+}
 
 /// Max amount of tries we can not update a finalized block number before we will clear requests queue
 const MAX_ATTEMPTS: u32 = 5;
@@ -67,8 +53,8 @@ impl From<SessionAuthorityData> for JustificationVerifier {
 }
 
 impl<B: Block> Verifier<B> for JustificationVerifier {
-    fn verify(&self, justification: &StanceJustification, hash: B::Hash) -> bool {
-        use StanceJustification::*;
+    fn verify(&self, justification: &AlephJustification, hash: B::Hash) -> bool {
+        use AlephJustification::*;
         let encoded_hash = hash.encode();
         match justification {
             CommitteeMultisignature(multisignature) => match self
@@ -77,7 +63,7 @@ impl<B: Block> Verifier<B> for JustificationVerifier {
             {
                 true => true,
                 false => {
-                    warn!(target: "stance-justification", "Bad multisignature for block hash #{:?} {:?}", hash, multisignature);
+                    warn!(target: "aleph-justification", "Bad multisignature for block hash #{:?} {:?}", hash, multisignature);
                     false
                 }
             },
@@ -85,12 +71,12 @@ impl<B: Block> Verifier<B> for JustificationVerifier {
                 Some(emergency_signer) => match emergency_signer.verify(&encoded_hash, signature) {
                     true => true,
                     false => {
-                        warn!(target: "stance-justification", "Bad emergency signature for block hash #{:?} {:?}", hash, signature);
+                        warn!(target: "aleph-justification", "Bad emergency signature for block hash #{:?} {:?}", hash, signature);
                         false
                     }
                 },
                 None => {
-                    warn!(target: "stance-justification", "Received emergency signature for block with hash #{:?}, which has no emergency signer defined.", hash);
+                    warn!(target: "aleph-justification", "Received emergency signature for block with hash #{:?}, which has no emergency signer defined.", hash);
                     false
                 }
             },
@@ -98,9 +84,10 @@ impl<B: Block> Verifier<B> for JustificationVerifier {
     }
 }
 
-struct JustificationParams<B: Block, H: ExHashT, C> {
+struct JustificationParams<B: Block, H: ExHashT, C, BB> {
     pub network: Arc<NetworkService<B, H>>,
     pub client: Arc<C>,
+    pub blockchain_backend: BB,
     pub justification_rx: mpsc::UnboundedReceiver<JustificationNotification<B>>,
     pub metrics: Option<Metrics<<B::Header as Header>::Hash>>,
     pub session_period: SessionPeriod,
@@ -141,8 +128,8 @@ impl<B: Block> SessionInfoProvider<B, JustificationVerifier> for SessionInfoProv
     }
 }
 
-fn setup_justification_handler<B, H, C, BE>(
-    just_params: JustificationParams<B, H, C>,
+fn setup_justification_handler<B, H, C, BB, BE>(
+    just_params: JustificationParams<B, H, C, BB>,
 ) -> (
     UnboundedSender<JustificationNotification<B>>,
     impl Future<Output = ()>,
@@ -150,13 +137,15 @@ fn setup_justification_handler<B, H, C, BE>(
 where
     B: Block,
     H: ExHashT,
-    C: crate::ClientForStance<B, BE> + Send + Sync + 'static,
-    C::Api: stance_primitives::StanceSessionApi<B>,
+    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    C::Api: aleph_primitives::AlephSessionApi<B>,
     BE: Backend<B> + 'static,
+    BB: BlockchainBackend<B> + 'static + Send,
 {
     let JustificationParams {
         network,
         client,
+        blockchain_backend,
         justification_rx,
         metrics,
         session_period,
@@ -167,8 +156,8 @@ where
     let handler = JustificationHandler::new(
         SessionInfoProviderImpl::new(session_map, session_period),
         network,
-        client.clone(),
-        StanceFinalizer::new(client),
+        blockchain_backend,
+        AlephFinalizer::new(client),
         JustificationRequestSchedulerImpl::new(&session_period, &millisecs_per_block, MAX_ATTEMPTS),
         metrics,
         Default::default(),

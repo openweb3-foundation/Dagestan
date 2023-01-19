@@ -1,122 +1,72 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
+use std::{sync::Arc, time::Duration};
 
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-use std::{
-    collections::{HashSet, VecDeque},
-    fmt,
-    sync::Arc,
-};
-
-use stance_primitives::KEY_TYPE;
-use async_trait::async_trait;
-use codec::{Decode, Encode};
-use futures::{
-    channel::{mpsc, oneshot},
-    StreamExt,
-};
-use parking_lot::Mutex;
-use rand::random;
+use aleph_primitives::KEY_TYPE;
+use codec::{Decode, Encode, Output};
+use futures::{channel::mpsc, StreamExt};
 use sp_keystore::{testing::KeyStore, CryptoStore};
+use tokio::time::timeout;
 
 use crate::{
     crypto::{AuthorityPen, AuthorityVerifier},
-    network::{
-        ConnectionCommand, Data, DataCommand, Event, EventStream, Multiaddress, Network,
-        NetworkIdentity, NetworkSender, PeerId, Protocol, IO,
-    },
     AuthorityId, NodeIndex,
 };
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash, Encode, Decode)]
-pub struct MockPeerId(u32);
-
-impl MockPeerId {
-    pub fn random() -> Self {
-        MockPeerId(random())
-    }
-}
-impl fmt::Display for MockPeerId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+#[derive(Hash, Debug, Clone, PartialEq, Eq)]
+pub struct MockData {
+    data: u32,
+    filler: Vec<u8>,
+    decodes: bool,
 }
 
-impl PeerId for MockPeerId {}
-
-#[derive(PartialEq, Eq, Clone, Debug, Hash, Encode, Decode)]
-pub struct MockMultiaddress {
-    peer_id: Option<MockPeerId>,
-    address: u32,
-}
-
-impl MockMultiaddress {
-    pub fn random_with_id(peer_id: MockPeerId) -> Self {
-        MockMultiaddress {
-            peer_id: Some(peer_id),
-            address: random(),
+impl MockData {
+    pub fn new(data: u32, filler_size: usize) -> MockData {
+        MockData {
+            data,
+            filler: vec![0; filler_size],
+            decodes: true,
         }
     }
-}
 
-impl Multiaddress for MockMultiaddress {
-    type PeerId = MockPeerId;
-
-    fn get_peer_id(&self) -> Option<Self::PeerId> {
-        self.peer_id
-    }
-
-    fn add_matching_peer_id(mut self, peer_id: Self::PeerId) -> Option<Self> {
-        match self.peer_id {
-            Some(old_peer_id) => match old_peer_id == peer_id {
-                true => Some(self),
-                false => None,
-            },
-            None => {
-                self.peer_id = Some(peer_id);
-                Some(self)
-            }
+    pub fn new_undecodable(data: u32, filler_size: usize) -> MockData {
+        MockData {
+            data,
+            filler: vec![0; filler_size],
+            decodes: false,
         }
     }
-}
 
-pub struct MockNetworkIdentity {
-    addresses: Vec<MockMultiaddress>,
-    peer_id: MockPeerId,
-}
-
-impl MockNetworkIdentity {
-    pub fn new() -> Self {
-        let peer_id = MockPeerId::random();
-        let addresses = (0..3)
-            .map(|_| MockMultiaddress::random_with_id(peer_id))
-            .collect();
-        MockNetworkIdentity { addresses, peer_id }
+    pub fn data(&self) -> u32 {
+        self.data
     }
 }
 
-impl NetworkIdentity for MockNetworkIdentity {
-    type PeerId = MockPeerId;
-    type Multiaddress = MockMultiaddress;
+impl Encode for MockData {
+    fn size_hint(&self) -> usize {
+        self.data.size_hint() + self.filler.size_hint() + self.decodes.size_hint()
+    }
 
-    fn identity(&self) -> (Vec<Self::Multiaddress>, Self::PeerId) {
-        (self.addresses.clone(), self.peer_id)
+    fn encode_to<T: Output + ?Sized>(&self, dest: &mut T) {
+        // currently this is exactly the default behaviour, but we still
+        // need it here to make sure that decode works in the future
+        self.data.encode_to(dest);
+        self.filler.encode_to(dest);
+        self.decodes.encode_to(dest);
+    }
+}
+
+impl Decode for MockData {
+    fn decode<I: codec::Input>(value: &mut I) -> Result<Self, codec::Error> {
+        let data = u32::decode(value)?;
+        let filler = Vec::<u8>::decode(value)?;
+        let decodes = bool::decode(value)?;
+        if !decodes {
+            return Err("Simulated decode failure.".into());
+        }
+        Ok(Self {
+            data,
+            filler,
+            decodes,
+        })
     }
 }
 
@@ -125,6 +75,8 @@ pub struct Channel<T>(
     pub mpsc::UnboundedSender<T>,
     pub Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<T>>>,
 );
+
+const TIMEOUT_FAIL: Duration = Duration::from_secs(10);
 
 impl<T> Channel<T> {
     pub fn new() -> Self {
@@ -137,7 +89,19 @@ impl<T> Channel<T> {
     }
 
     pub async fn next(&mut self) -> Option<T> {
-        self.1.lock().await.next().await
+        timeout(TIMEOUT_FAIL, self.1.lock().await.next())
+            .await
+            .ok()
+            .flatten()
+    }
+
+    pub async fn take(&mut self, n: usize) -> Vec<T> {
+        timeout(
+            TIMEOUT_FAIL,
+            self.1.lock().await.by_ref().take(n).collect::<Vec<_>>(),
+        )
+        .await
+        .unwrap_or_default()
     }
 
     pub async fn try_next(&self) -> Option<T> {
@@ -150,167 +114,9 @@ impl<T> Channel<T> {
     }
 }
 
-pub type MockDataCommand = DataCommand<MockPeerId>;
-pub type MockConnectionCommand = ConnectionCommand<MockMultiaddress>;
-pub type MockEvent = Event<MockMultiaddress>;
-
-pub type MockData = Vec<u8>;
-
-pub struct MockIO {
-    pub messages_for_user: mpsc::UnboundedSender<(MockData, MockDataCommand)>,
-    pub messages_from_user: mpsc::UnboundedReceiver<MockData>,
-    pub commands_for_manager: mpsc::UnboundedSender<MockConnectionCommand>,
-}
-
-impl MockIO {
-    pub fn new() -> (MockIO, IO<MockData, MockMultiaddress>) {
-        let (mock_messages_for_user, messages_from_user) = mpsc::unbounded();
-        let (messages_for_user, mock_messages_from_user) = mpsc::unbounded();
-        let (mock_commands_for_manager, commands_from_manager) = mpsc::unbounded();
-        (
-            MockIO {
-                messages_for_user: mock_messages_for_user,
-                messages_from_user: mock_messages_from_user,
-                commands_for_manager: mock_commands_for_manager,
-            },
-            IO::new(messages_from_user, messages_for_user, commands_from_manager),
-        )
-    }
-}
-
-pub struct MockEventStream(mpsc::UnboundedReceiver<MockEvent>);
-
-#[async_trait]
-impl EventStream<MockMultiaddress> for MockEventStream {
-    async fn next_event(&mut self) -> Option<MockEvent> {
-        self.0.next().await
-    }
-}
-
-pub struct MockNetworkSender<D: Data> {
-    sender: mpsc::UnboundedSender<(D, MockPeerId, Protocol)>,
-    peer_id: MockPeerId,
-    protocol: Protocol,
-    error: Result<(), MockSenderError>,
-}
-
-#[async_trait]
-impl<D: Data> NetworkSender for MockNetworkSender<D> {
-    type SenderError = MockSenderError;
-
-    async fn send<'a>(
-        &'a self,
-        data: impl Into<Vec<u8>> + Send + Sync + 'static,
-    ) -> Result<(), MockSenderError> {
-        self.error?;
-        self.sender
-            .unbounded_send((
-                D::decode(&mut &data.into()[..]).unwrap(),
-                self.peer_id,
-                self.protocol,
-            ))
-            .unwrap();
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-pub struct MockNetwork<D: Data> {
-    pub add_reserved: Channel<(HashSet<MockMultiaddress>, Protocol)>,
-    pub remove_reserved: Channel<(HashSet<MockPeerId>, Protocol)>,
-    pub send_message: Channel<(D, MockPeerId, Protocol)>,
-    pub event_sinks: Arc<Mutex<Vec<mpsc::UnboundedSender<MockEvent>>>>,
-    event_stream_taken_oneshot: Arc<Mutex<Option<oneshot::Sender<()>>>>,
-    pub create_sender_errors: Arc<Mutex<VecDeque<MockSenderError>>>,
-    pub send_errors: Arc<Mutex<VecDeque<MockSenderError>>>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum MockSenderError {
-    SomeError,
-}
-
-impl fmt::Display for MockSenderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            MockSenderError::SomeError => {
-                write!(f, "Some error message")
-            }
-        }
-    }
-}
-
-impl std::error::Error for MockSenderError {}
-
-impl<D: Data> Network for MockNetwork<D> {
-    type SenderError = MockSenderError;
-    type NetworkSender = MockNetworkSender<D>;
-    type PeerId = MockPeerId;
-    type Multiaddress = MockMultiaddress;
-    type EventStream = MockEventStream;
-
-    fn event_stream(&self) -> Self::EventStream {
-        let (tx, rx) = mpsc::unbounded();
-        self.event_sinks.lock().push(tx);
-        // Necessary for tests to detect when service takes event_stream
-        if let Some(tx) = self.event_stream_taken_oneshot.lock().take() {
-            tx.send(()).unwrap();
-        }
-        MockEventStream(rx)
-    }
-
-    fn sender(
-        &self,
-        peer_id: Self::PeerId,
-        protocol: Protocol,
-    ) -> Result<Self::NetworkSender, Self::SenderError> {
-        self.create_sender_errors
-            .lock()
-            .pop_front()
-            .map_or(Ok(()), Err)?;
-        let error = self.send_errors.lock().pop_front().map_or(Ok(()), Err);
-        Ok(MockNetworkSender {
-            sender: self.send_message.0.clone(),
-            peer_id,
-            protocol,
-            error,
-        })
-    }
-
-    fn add_reserved(&self, addresses: HashSet<Self::Multiaddress>, protocol: Protocol) {
-        self.add_reserved.send((addresses, protocol));
-    }
-
-    fn remove_reserved(&self, peers: HashSet<Self::PeerId>, protocol: Protocol) {
-        self.remove_reserved.send((peers, protocol));
-    }
-}
-
-impl<D: Data> MockNetwork<D> {
-    pub fn new(oneshot_sender: oneshot::Sender<()>) -> Self {
-        MockNetwork {
-            add_reserved: Channel::new(),
-            remove_reserved: Channel::new(),
-            send_message: Channel::new(),
-            event_sinks: Arc::new(Mutex::new(vec![])),
-            event_stream_taken_oneshot: Arc::new(Mutex::new(Some(oneshot_sender))),
-            create_sender_errors: Arc::new(Mutex::new(VecDeque::new())),
-            send_errors: Arc::new(Mutex::new(VecDeque::new())),
-        }
-    }
-
-    pub fn emit_event(&mut self, event: MockEvent) {
-        for sink in &*self.event_sinks.lock() {
-            sink.unbounded_send(event.clone()).unwrap();
-        }
-    }
-
-    // Consumes the network asserting there are no unreceived messages in the channels.
-    pub async fn close_channels(self) {
-        self.event_sinks.lock().clear();
-        assert!(self.add_reserved.close().await.is_none());
-        assert!(self.remove_reserved.close().await.is_none());
-        assert!(self.send_message.close().await.is_none());
+impl<T> Default for Channel<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

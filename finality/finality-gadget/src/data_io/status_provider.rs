@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use log::debug;
 use sp_runtime::{
     traits::{Block as BlockT, NumberFor, One},
@@ -26,12 +6,12 @@ use sp_runtime::{
 
 use crate::data_io::{
     chain_info::ChainInfoProvider,
-    proposal::{StanceProposal, ProposalStatus},
+    proposal::{AlephProposal, ProposalStatus},
 };
 
 pub fn get_proposal_status<B, CIP>(
     chain_info_provider: &mut CIP,
-    proposal: &StanceProposal<B>,
+    proposal: &AlephProposal<B>,
     old_status: Option<&ProposalStatus<B>>,
 ) -> ProposalStatus<B>
 where
@@ -47,7 +27,7 @@ where
     }
 
     if is_hopeless_fork(chain_info_provider, proposal) {
-        debug!(target: "stance-finality", "Encountered a hopeless fork proposal {:?}.", proposal);
+        debug!(target: "aleph-finality", "Encountered a hopeless fork proposal {:?}.", proposal);
         return Ignore;
     }
 
@@ -102,7 +82,7 @@ where
     }
 }
 
-fn is_hopeless_fork<B, CIP>(chain_info_provider: &mut CIP, proposal: &StanceProposal<B>) -> bool
+fn is_hopeless_fork<B, CIP>(chain_info_provider: &mut CIP, proposal: &AlephProposal<B>) -> bool
 where
     B: BlockT,
     CIP: ChainInfoProvider<B>,
@@ -123,7 +103,7 @@ where
     false
 }
 
-fn is_ancestor_finalized<B, CIP>(chain_info_provider: &mut CIP, proposal: &StanceProposal<B>) -> bool
+fn is_ancestor_finalized<B, CIP>(chain_info_provider: &mut CIP, proposal: &AlephProposal<B>) -> bool
 where
     B: BlockT,
     CIP: ChainInfoProvider<B>,
@@ -146,7 +126,7 @@ where
 // Checks that the subsequent blocks in the branch are in the parent-child relation, as required.
 fn is_branch_ancestry_correct<B, CIP>(
     chain_info_provider: &mut CIP,
-    proposal: &StanceProposal<B>,
+    proposal: &AlephProposal<B>,
 ) -> bool
 where
     B: BlockT,
@@ -184,7 +164,7 @@ mod tests {
         data_io::{
             chain_info::{AuxFinalizationChainInfoProvider, CachedChainInfoProvider},
             proposal::{
-                StanceProposal,
+                AlephProposal,
                 PendingProposalStatus::*,
                 ProposalStatus::{self, *},
             },
@@ -197,17 +177,17 @@ mod tests {
         SessionBoundaries, SessionId, SessionPeriod,
     };
 
-    // A large number only for the purpose of creating `StanceProposal`s
+    // A large number only for the purpose of creating `AlephProposal`s
     const DUMMY_SESSION_LEN: u32 = 1_000_000;
 
-    fn proposal_from_headers(headers: Vec<Header>) -> StanceProposal<Block> {
+    fn proposal_from_headers(headers: Vec<Header>) -> AlephProposal<Block> {
         let unvalidated = unvalidated_proposal_from_headers(headers);
         let session_boundaries =
             SessionBoundaries::new(SessionId(0), SessionPeriod(DUMMY_SESSION_LEN));
         unvalidated.validate_bounds(&session_boundaries).unwrap()
     }
 
-    fn proposal_from_blocks(blocks: Vec<Block>) -> StanceProposal<Block> {
+    fn proposal_from_blocks(blocks: Vec<Block>) -> AlephProposal<Block> {
         let headers = blocks.into_iter().map(|b| b.header().clone()).collect();
         proposal_from_headers(headers)
     }
@@ -239,7 +219,7 @@ mod tests {
     fn verify_proposal_status(
         cached_cip: &mut TestCachedChainInfo,
         aux_cip: &mut TestAuxChainInfo,
-        proposal: &StanceProposal<Block>,
+        proposal: &AlephProposal<Block>,
         correct_status: ProposalStatus<Block>,
     ) {
         let status_a = get_proposal_status(aux_cip, proposal, None);

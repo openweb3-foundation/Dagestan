@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use std::{
     cmp::max,
     hash::{Hash, Hasher},
@@ -36,23 +16,23 @@ use crate::{data_io::MAX_DATA_BRANCH_LEN, BlockHashNum, SessionBoundaries};
 /// a malicious node there is no guarantee that the block hashes in the proposal correspond to real blocks
 /// and even if they do then they could not match the provided number. Moreover, the block number in the
 /// proposal might be completely arbitrary and hence we perform initial validation of the block number and
-/// the branch length before we transform it into a safer `StanceProposal` type that guarantees we will not
+/// the branch length before we transform it into a safer `AlephProposal` type that guarantees we will not
 /// fail on  any integer over- or underflows.
-/// We expect that honest nodes create UnvalidatedStanceProposal {branch: [h_0, h_1, ..., h_n], number: num} objects
+/// We expect that honest nodes create UnvalidatedAlephProposal {branch: [h_0, h_1, ..., h_n], number: num} objects
 /// that represent an ascending sequence of blocks b_0, b_1, ..., b_n satisfying the following conditions:
 ///     1) hash(b_i) = h_i for i = 0, 1, ..., n,
 ///     2) parent(b_{i+1}) = b_i for i = 0, 1, ..., (n-1),
 ///     3) height(b_n) = num,
-///     4) The parent of b_0 has been finalized (prior to creating this StanceData).
-/// Such an UnvalidatedStanceProposal  object should be thought of as a proposal for block b_n to be finalized.
+///     4) The parent of b_0 has been finalized (prior to creating this AlephData).
+/// Such an UnvalidatedAlephProposal  object should be thought of as a proposal for block b_n to be finalized.
 /// We refer for to `DataProvider` for a precise description of honest nodes' algorithm of creating proposals.
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct UnvalidatedStanceProposal<B: BlockT> {
+pub struct UnvalidatedAlephProposal<B: BlockT> {
     pub branch: Vec<B::Hash>,
     pub number: NumberFor<B>,
 }
 
-/// Represents possible invalid states as described in [UnvalidatedStanceProposal].
+/// Represents possible invalid states as described in [UnvalidatedAlephProposal].
 #[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError<B: BlockT> {
     BranchEmpty,
@@ -72,7 +52,7 @@ pub enum ValidationError<B: BlockT> {
 }
 
 // Need to be implemented manually, as deriving does not work (`BlockT` is not `Hash`).
-impl<B: BlockT> Hash for UnvalidatedStanceProposal<B> {
+impl<B: BlockT> Hash for UnvalidatedAlephProposal<B> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.branch.hash(state);
         self.number.hash(state);
@@ -80,17 +60,17 @@ impl<B: BlockT> Hash for UnvalidatedStanceProposal<B> {
 }
 
 // Clippy does not allow deriving PartialEq when implementing Hash manually
-impl<B: BlockT> PartialEq for UnvalidatedStanceProposal<B> {
+impl<B: BlockT> PartialEq for UnvalidatedAlephProposal<B> {
     fn eq(&self, other: &Self) -> bool {
         self.number.eq(&other.number) && self.branch.eq(&other.branch)
     }
 }
 
-impl<B: BlockT> Eq for UnvalidatedStanceProposal<B> {}
+impl<B: BlockT> Eq for UnvalidatedAlephProposal<B> {}
 
-impl<B: BlockT> UnvalidatedStanceProposal<B> {
+impl<B: BlockT> UnvalidatedAlephProposal<B> {
     pub(crate) fn new(branch: Vec<B::Hash>, block_number: NumberFor<B>) -> Self {
-        UnvalidatedStanceProposal {
+        UnvalidatedAlephProposal {
             branch,
             number: block_number,
         }
@@ -99,10 +79,10 @@ impl<B: BlockT> UnvalidatedStanceProposal<B> {
     pub(crate) fn validate_bounds(
         &self,
         session_boundaries: &SessionBoundaries<B>,
-    ) -> Result<StanceProposal<B>, ValidationError<B>> {
+    ) -> Result<AlephProposal<B>, ValidationError<B>> {
         use ValidationError::*;
 
-        if self.branch.len() > MAX_DATA_BRANCH_LEN as usize {
+        if self.branch.len() > MAX_DATA_BRANCH_LEN {
             return Err(BranchTooLong {
                 branch_size: self.branch.len(),
             });
@@ -131,23 +111,23 @@ impl<B: BlockT> UnvalidatedStanceProposal<B> {
             });
         }
 
-        Ok(StanceProposal {
+        Ok(AlephProposal {
             branch: self.branch.clone(),
             number: self.number,
         })
     }
 }
 
-/// A version of UnvalidatedStanceProposal that has been initially validated and fits
+/// A version of UnvalidatedAlephProposal that has been initially validated and fits
 /// within session bounds.
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct StanceProposal<B: BlockT> {
+pub struct AlephProposal<B: BlockT> {
     branch: Vec<B::Hash>,
     number: NumberFor<B>,
 }
 
 // Need to be implemented manually, as deriving does not work (`BlockT` is not `Hash`).
-impl<B: BlockT> Hash for StanceProposal<B> {
+impl<B: BlockT> Hash for AlephProposal<B> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.branch.hash(state);
         self.number.hash(state);
@@ -155,22 +135,22 @@ impl<B: BlockT> Hash for StanceProposal<B> {
 }
 
 // Clippy does not allow deriving PartialEq when implementing Hash manually
-impl<B: BlockT> PartialEq for StanceProposal<B> {
+impl<B: BlockT> PartialEq for AlephProposal<B> {
     fn eq(&self, other: &Self) -> bool {
         self.number.eq(&other.number) && self.branch.eq(&other.branch)
     }
 }
 
-impl<B: BlockT> Eq for StanceProposal<B> {}
+impl<B: BlockT> Eq for AlephProposal<B> {}
 
-impl<B: BlockT> Index<usize> for StanceProposal<B> {
+impl<B: BlockT> Index<usize> for AlephProposal<B> {
     type Output = B::Hash;
     fn index(&self, index: usize) -> &Self::Output {
         &self.branch[index]
     }
 }
 
-impl<B: BlockT> StanceProposal<B> {
+impl<B: BlockT> AlephProposal<B> {
     /// Outputs the length the branch.
     pub fn len(&self) -> usize {
         self.branch.len()
@@ -260,14 +240,14 @@ mod tests {
     use sp_core::hash::H256;
     use substrate_test_runtime_client::runtime::Block;
 
-    use super::{UnvalidatedStanceProposal, ValidationError::*};
+    use super::{UnvalidatedAlephProposal, ValidationError::*};
     use crate::{data_io::MAX_DATA_BRANCH_LEN, SessionBoundaries, SessionId, SessionPeriod};
 
     #[test]
     fn proposal_with_empty_branch_is_invalid() {
         let session_boundaries = SessionBoundaries::<Block>::new(SessionId(1), SessionPeriod(20));
         let branch = vec![];
-        let proposal = UnvalidatedStanceProposal::new(branch, session_boundaries.first_block());
+        let proposal = UnvalidatedAlephProposal::new(branch, session_boundaries.first_block());
         assert_eq!(
             proposal.validate_bounds(&session_boundaries),
             Err(BranchEmpty)
@@ -280,7 +260,7 @@ mod tests {
         let session_end = session_boundaries.last_block();
         let branch = vec![H256::default(); MAX_DATA_BRANCH_LEN + 1];
         let branch_size = branch.len();
-        let proposal = UnvalidatedStanceProposal::new(branch, session_end);
+        let proposal = UnvalidatedAlephProposal::new(branch, session_end);
         assert_eq!(
             proposal.validate_bounds(&session_boundaries),
             Err(BranchTooLong { branch_size })
@@ -294,7 +274,7 @@ mod tests {
         let session_end = session_boundaries.last_block();
         let branch = vec![H256::default(); 2];
 
-        let proposal = UnvalidatedStanceProposal::new(branch.clone(), session_start);
+        let proposal = UnvalidatedAlephProposal::new(branch.clone(), session_start);
         assert_eq!(
             proposal.validate_bounds(&session_boundaries),
             Err(BlockOutsideSessionBoundaries {
@@ -305,7 +285,7 @@ mod tests {
             })
         );
 
-        let proposal = UnvalidatedStanceProposal::new(branch, session_end + 1);
+        let proposal = UnvalidatedAlephProposal::new(branch, session_end + 1);
         assert_eq!(
             proposal.validate_bounds(&session_boundaries),
             Err(BlockOutsideSessionBoundaries {
@@ -322,7 +302,7 @@ mod tests {
         let session_boundaries = SessionBoundaries::<Block>::new(SessionId(0), SessionPeriod(20));
         let branch = vec![H256::default(); 2];
 
-        let proposal = UnvalidatedStanceProposal::new(branch, 1);
+        let proposal = UnvalidatedAlephProposal::new(branch, 1);
         assert_eq!(
             proposal.validate_bounds(&session_boundaries),
             Err(BlockNumberOutOfBounds {
@@ -337,11 +317,11 @@ mod tests {
         let session_boundaries = SessionBoundaries::<Block>::new(SessionId(0), SessionPeriod(20));
 
         let branch = vec![H256::default(); MAX_DATA_BRANCH_LEN];
-        let proposal = UnvalidatedStanceProposal::new(branch, (MAX_DATA_BRANCH_LEN + 1) as u64);
+        let proposal = UnvalidatedAlephProposal::new(branch, (MAX_DATA_BRANCH_LEN + 1) as u64);
         assert!(proposal.validate_bounds(&session_boundaries).is_ok());
 
         let branch = vec![H256::default(); 1];
-        let proposal = UnvalidatedStanceProposal::new(branch, (MAX_DATA_BRANCH_LEN + 1) as u64);
+        let proposal = UnvalidatedAlephProposal::new(branch, (MAX_DATA_BRANCH_LEN + 1) as u64);
         assert!(proposal.validate_bounds(&session_boundaries).is_ok());
     }
 }

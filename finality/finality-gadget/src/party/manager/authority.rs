@@ -1,23 +1,3 @@
-// بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
-
-// This file is part of STANCE.
-
-// Copyright (C) 2019-Present Setheum Labs.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 use futures::channel::oneshot;
 use log::{debug, trace, warn};
 
@@ -50,7 +30,7 @@ impl Task {
     /// can be used to restart the task.
     pub async fn stopped(&mut self) -> NodeIndex {
         if self.task.stopped().await.is_err() {
-            debug!(target: "stance-party", "Authority task failed for {:?}", self.node_id);
+            debug!(target: "aleph-party", "Authority task failed for {:?}", self.node_id);
         }
         self.node_id
     }
@@ -86,28 +66,28 @@ impl Subtasks {
     async fn stop(self) -> Result<(), ()> {
         // both member and aggregator are implicitly using forwarder,
         // so we should force them to exit first to avoid any panics, i.e. `send on closed channel`
-        debug!(target: "stance-party", "Started to stop all tasks");
+        debug!(target: "aleph-party", "Started to stop all tasks");
         let mut result = Ok(());
         if self.member.stop().await.is_err() {
-            warn!(target: "stance-party", "Member stopped with en error");
+            warn!(target: "aleph-party", "Member stopped with en error");
             result = Err(());
         }
-        trace!(target: "stance-party", "Member stopped");
+        trace!(target: "aleph-party", "Member stopped");
         if self.aggregator.stop().await.is_err() {
-            warn!(target: "stance-party", "Aggregator stopped with en error");
+            warn!(target: "aleph-party", "Aggregator stopped with en error");
             result = Err(());
         }
-        trace!(target: "stance-party", "Aggregator stopped");
+        trace!(target: "aleph-party", "Aggregator stopped");
         if self.refresher.stop().await.is_err() {
-            warn!(target: "stance-party", "Refresher stopped with en error");
+            warn!(target: "aleph-party", "Refresher stopped with en error");
             result = Err(());
         }
-        trace!(target: "stance-party", "Refresher stopped");
+        trace!(target: "aleph-party", "Refresher stopped");
         if self.data_store.stop().await.is_err() {
-            warn!(target: "stance-party", "DataStore stopped with en error");
+            warn!(target: "aleph-party", "DataStore stopped with en error");
             result = Err(());
         }
-        trace!(target: "stance-party", "DataStore stopped");
+        trace!(target: "aleph-party", "DataStore stopped");
         result
     }
 
@@ -115,13 +95,13 @@ impl Subtasks {
     pub async fn wait_completion(mut self) -> Result<(), ()> {
         let result = tokio::select! {
             _ = &mut self.exit => Ok(()),
-            res = self.member.stopped() => { debug!(target: "stance-party", "Member stopped early"); res },
-            res = self.aggregator.stopped() => { debug!(target: "stance-party", "Aggregator stopped early"); res },
-            res = self.refresher.stopped() => { debug!(target: "stance-party", "Refresher stopped early"); res },
-            res = self.data_store.stopped() => { debug!(target: "stance-party", "DataStore stopped early"); res },
+            res = self.member.stopped() => { debug!(target: "aleph-party", "Member stopped early"); res },
+            res = self.aggregator.stopped() => { debug!(target: "aleph-party", "Aggregator stopped early"); res },
+            res = self.refresher.stopped() => { debug!(target: "aleph-party", "Refresher stopped early"); res },
+            res = self.data_store.stopped() => { debug!(target: "aleph-party", "DataStore stopped early"); res },
         };
         let stop_result = self.stop().await;
-        debug!(target: "stance-party", "Stopped all processes");
+        debug!(target: "aleph-party", "Stopped all processes");
         result.and(stop_result)
     }
 }
