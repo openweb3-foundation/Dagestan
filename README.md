@@ -9,4 +9,4 @@ Dagestan (DAGESTAN) is an asynchronous and Byzantine fault tolerant consensus pr
 *Bult on AlephBFT Consensus protocol.*
 
 ## LICENSE
-The primary license for DAGESTAN is the GPL3, see [LICENSE](https://github.com/Khalifa-Blockchain/Dagestan/blob/main/LICENSE.md).
+The primary license for DAGESTAN is the GPL3, see [LICENSE](https://github.com/Setheum-Labs/Dagestan/blob/main/LICENSE.md).
