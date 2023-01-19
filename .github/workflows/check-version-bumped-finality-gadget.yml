@@ -1,18 +1,18 @@
-name: Version bump check for code changes in the stance-rmc package
+name: Version bump check for code changes in the dagestan-finality-finality-gadget package
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - 'reliable-broadcast/rmc/src/**'
+      - 'finality/finality-gadget/src/**'
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
-  check-version-bumped-rmc:
+  check-version-bumped-finality-gadget:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -21,8 +21,8 @@ jobs:
           fetch-depth: 0
       - name: check-cargo-toml-version-bumped
         run: |
-          if ! git diff HEAD origin/main -- rmc/Cargo.toml | grep -q '^+version ='; then
-            echo "None of commits in this PR has changed version in rmc/Cargo.toml!"
+          if ! git diff HEAD origin/main -- finality/finality-gadget/Cargo.toml | grep -q '^+version ='; then
+            echo "None of commits in this PR has changed version in finality/finality-gadget/Cargo.toml!"
             exit 1
           fi
         shell: bash
