@@ -1,21 +1,21 @@
 use sp_runtime::traits::Block as BlockT;
 use substrate_test_runtime_client::runtime::{Block, Header};
 
-use crate::data_io::{AlephData, UnvalidatedAlephProposal};
+use crate::data_io::{DagestanData, UnvalidatedDagestanProposal};
 
-pub fn unvalidated_proposal_from_headers(headers: Vec<Header>) -> UnvalidatedAlephProposal<Block> {
+pub fn unvalidated_proposal_from_headers(headers: Vec<Header>) -> UnvalidatedDagestanProposal<Block> {
     let num = headers.last().unwrap().number;
     let hashes = headers.into_iter().map(|header| header.hash()).collect();
-    UnvalidatedAlephProposal::new(hashes, num)
+    UnvalidatedDagestanProposal::new(hashes, num)
 }
 
-pub fn aleph_data_from_blocks(blocks: Vec<Block>) -> AlephData<Block> {
+pub fn dagestan_data_from_blocks(blocks: Vec<Block>) -> DagestanData<Block> {
     let headers = blocks.into_iter().map(|b| b.header().clone()).collect();
-    aleph_data_from_headers(headers)
+    dagestan_data_from_headers(headers)
 }
 
-pub fn aleph_data_from_headers(headers: Vec<Header>) -> AlephData<Block> {
-    AlephData {
+pub fn dagestan_data_from_headers(headers: Vec<Header>) -> DagestanData<Block> {
+    DagestanData {
         head_proposal: unvalidated_proposal_from_headers(headers),
     }
 }

@@ -4,8 +4,8 @@ use frame_election_provider_support::{ElectionProvider, Support};
 use frame_support::bounded_vec;
 use pallet_session::SessionManager;
 #[cfg(feature = "try-runtime")]
-use pallets_support::StorageMigration;
-use primitives::{BanConfig as BanConfigStruct, CommitteeSeats};
+use dagestan_support::StorageMigration;
+use dagestan_primitives::{BanConfig as BanConfigStruct, CommitteeSeats};
 
 use crate::{
     mock::{

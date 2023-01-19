@@ -1,4 +1,4 @@
-//! Types common for current & legacy abft used across finality-aleph
+//! Types common for current & legacy abft used across dagestan-finality-gadget
 
 use codec::{Decode, Encode, Error, Input, Output};
 use derive_more::{From, Into};

@@ -6,29 +6,29 @@ use sp_runtime::traits::Block;
 use crate::{
     abft::SignatureSet,
     crypto::Signature,
-    data_io::{AlephData, AlephNetworkMessage},
+    data_io::{DagestanData, DagestanNetworkMessage},
     network::{data::Network, Data},
     Hasher, Recipient,
 };
 
 pub type LegacyNetworkData<B> =
-    legacy_aleph_bft::NetworkData<Hasher, AlephData<B>, Signature, SignatureSet<Signature>>;
+    legacy_aleph_bft::NetworkData<Hasher, DagestanData<B>, Signature, SignatureSet<Signature>>;
 
 pub type CurrentNetworkData<B> =
-    current_aleph_bft::NetworkData<Hasher, AlephData<B>, Signature, SignatureSet<Signature>>;
+    current_aleph_bft::NetworkData<Hasher, DagestanData<B>, Signature, SignatureSet<Signature>>;
 
-impl<B: Block> AlephNetworkMessage<B>
-    for legacy_aleph_bft::NetworkData<Hasher, AlephData<B>, Signature, SignatureSet<Signature>>
+impl<B: Block> DagestanNetworkMessage<B>
+    for legacy_aleph_bft::NetworkData<Hasher, DagestanData<B>, Signature, SignatureSet<Signature>>
 {
-    fn included_data(&self) -> Vec<AlephData<B>> {
+    fn included_data(&self) -> Vec<DagestanData<B>> {
         self.included_data()
     }
 }
 
-impl<B: Block> AlephNetworkMessage<B>
-    for current_aleph_bft::NetworkData<Hasher, AlephData<B>, Signature, SignatureSet<Signature>>
+impl<B: Block> DagestanNetworkMessage<B>
+    for current_aleph_bft::NetworkData<Hasher, DagestanData<B>, Signature, SignatureSet<Signature>>
 {
-    fn included_data(&self) -> Vec<AlephData<B>> {
+    fn included_data(&self) -> Vec<DagestanData<B>> {
         self.included_data()
     }
 }
@@ -54,7 +54,7 @@ impl<D: Data, DN: Network<D>> NetworkWrapper<D, DN> {
         R: Into<Recipient>,
     {
         if let Err(e) = self.inner.send(data, recipient.into()) {
-            warn!(target: "aleph-network", "Error '{:?}' while sending an AlephBFT message to the network.", e);
+            warn!(target: "dagestan-network", "Error '{:?}' while sending a DAGESTAN message to the network.", e);
         }
     }
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use aleph_primitives::{AlephSessionApi, SessionAuthorityData};
+use dagestan_primitives::{DagestanSessionApi, SessionAuthorityData};
 use futures::StreamExt;
 use log::{debug, error, trace};
 use sc_client_api::{Backend, FinalityNotification};
@@ -16,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    first_block_of_session, session_id_from_block_num, ClientForAleph, SessionId, SessionPeriod,
+    first_block_of_session, session_id_from_block_num, ClientForDagestan, SessionId, SessionPeriod,
 };
 
 const PRUNING_THRESHOLD: u32 = 10;
@@ -33,8 +33,8 @@ pub trait AuthorityProvider<B> {
 /// Default implementation of authority provider trait.
 pub struct AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -44,8 +44,8 @@ where
 
 impl<C, B, BE> AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -59,8 +59,8 @@ where
 
 impl<C, B, BE> AuthorityProvider<NumberFor<B>> for AuthorityProviderImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -110,8 +110,8 @@ pub trait FinalityNotificator<B, N> {
 /// Default implementation of finality notificator trait.
 pub struct FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -121,8 +121,8 @@ where
 
 impl<C, B, BE> FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -137,8 +137,8 @@ where
 impl<C, B, BE> FinalityNotificator<FinalityNotification<B>, NumberFor<B>>
     for FinalityNotificatorImpl<C, B, BE>
 where
-    C: ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     B: Block,
     BE: Backend<B> + 'static,
 {
@@ -178,7 +178,7 @@ impl SharedSessionMap {
         if let Some(senders) = guard.1.remove(&id) {
             for sender in senders {
                 if let Err(e) = sender.send(authority_data.clone()) {
-                    error!(target: "aleph-session-updater", "Error while sending notification: {:?}", e);
+                    error!(target: "dagestan-session-updater", "Error while sending notification: {:?}", e);
                 }
             }
         }
@@ -283,7 +283,7 @@ where
 
     /// puts authority data for the next session into the session map
     async fn handle_first_block_of_session(&mut self, num: NumberFor<B>, session_id: SessionId) {
-        debug!(target: "aleph-session-updater", "Handling first block #{:?} of session {:?}", num, session_id.0);
+        debug!(target: "dagestan-session-updater", "Handling first block #{:?} of session {:?}", num, session_id.0);
         let next_session = SessionId(session_id.0 + 1);
         let authority_provider = &self.authority_provider;
         self.session_map
@@ -305,7 +305,7 @@ where
         }
 
         if session_id.0 >= PRUNING_THRESHOLD && session_id.0 % PRUNING_THRESHOLD == 0 {
-            debug!(target: "aleph-session-updater", "Pruning session map below session #{:?}", session_id.0 - PRUNING_THRESHOLD);
+            debug!(target: "dagestan-session-updater", "Pruning session map below session #{:?}", session_id.0 - PRUNING_THRESHOLD);
             self.session_map
                 .prune_below(SessionId(session_id.0 - PRUNING_THRESHOLD))
                 .await;
@@ -341,7 +341,7 @@ where
 
         while let Some(FinalityNotification { header, .. }) = notifications.next().await {
             let last_finalized = header.number();
-            trace!(target: "aleph-session-updater", "got FinalityNotification about #{:?}", last_finalized);
+            trace!(target: "dagestan-session-updater", "got FinalityNotification about #{:?}", last_finalized);
 
             let session_id = session_id_from_block_num::<B>(*last_finalized, period);
 

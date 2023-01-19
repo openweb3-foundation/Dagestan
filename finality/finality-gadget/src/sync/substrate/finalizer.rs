@@ -1,15 +1,15 @@
-use aleph_primitives::{BlockNumber, ALEPH_ENGINE_ID};
+use dagestan_primitives::{BlockNumber, ALEPH_ENGINE_ID};
 use sc_client_api::{Backend, Finalizer as SubstrateFinalizer, HeaderBackend, LockImportRun};
 use sp_blockchain::Error as ClientError;
 use sp_runtime::traits::{Block as BlockT, Header as SubstrateHeader};
 
 use crate::{
-    finalization::{AlephFinalizer, BlockFinalizer},
+    finalization::{DagestanFinalizer, BlockFinalizer},
     justification::versioned_encode,
     sync::{substrate::Justification, Finalizer},
 };
 
-impl<B, BE, C> Finalizer<Justification<B::Header>> for AlephFinalizer<B, BE, C>
+impl<B, BE, C> Finalizer<Justification<B::Header>> for DagestanFinalizer<B, BE, C>
 where
     B: BlockT,
     B::Header: SubstrateHeader<Number = BlockNumber>,

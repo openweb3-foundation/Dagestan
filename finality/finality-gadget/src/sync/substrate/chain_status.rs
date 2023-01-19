@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
-use aleph_primitives::{BlockNumber, ALEPH_ENGINE_ID};
+use dagestan_primitives::{BlockNumber, ALEPH_ENGINE_ID};
 use log::warn;
 use sp_blockchain::{Backend, Error as ClientError};
 use sp_runtime::{
@@ -14,7 +14,7 @@ use sp_runtime::{
 use crate::{
     justification::backwards_compatible_decode,
     sync::{substrate::Justification, BlockStatus, ChainStatus, Header, LOG_TARGET},
-    AlephJustification,
+    DagestanJustification,
 };
 
 /// What can go wrong when checking chain status
@@ -78,7 +78,7 @@ where
         self.client.header(id)
     }
 
-    fn justification(&self, hash: B::Hash) -> Result<Option<AlephJustification>, ClientError> {
+    fn justification(&self, hash: B::Hash) -> Result<Option<DagestanJustification>, ClientError> {
         let id = SubstrateBlockId::<B>::Hash(hash);
         let justification = match self
             .client

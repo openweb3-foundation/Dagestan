@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    justification::{AlephJustification, SessionInfo, SessionInfoProvider, Verifier},
+    justification::{DagestanJustification, SessionInfo, SessionInfoProvider, Verifier},
     last_block_of_session, session_id_from_block_num,
     testing::mocks::{AcceptancePolicy, TBlock, THash, TNumber},
     SessionPeriod,
@@ -12,7 +12,7 @@ pub(crate) struct VerifierWrapper {
 }
 
 impl Verifier<TBlock> for VerifierWrapper {
-    fn verify(&self, _justification: &AlephJustification, _hash: THash) -> bool {
+    fn verify(&self, _justification: &DagestanJustification, _hash: THash) -> bool {
         self.acceptance_policy.lock().unwrap().accepts()
     }
 }

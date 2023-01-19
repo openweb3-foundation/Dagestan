@@ -5,14 +5,14 @@ use sp_runtime::traits::{Block as BlockT, NumberFor, SaturatedConversion};
 
 use crate::{
     party::traits::{Block, ChainState, SessionInfo},
-    ClientForAleph, SessionId, SessionPeriod,
+    ClientForDagestan, SessionId, SessionPeriod,
 };
 
 pub struct ChainStateImpl<B, BE, CFA>
 where
     B: BlockT,
     BE: Backend<B>,
-    CFA: ClientForAleph<B, BE>,
+    CFA: ClientForDagestan<B, BE>,
 {
     pub client: Arc<CFA>,
     pub _phantom: PhantomData<(B, BE)>,
@@ -22,7 +22,7 @@ impl<B, BE, CFA> ChainState<B> for ChainStateImpl<B, BE, CFA>
 where
     B: BlockT,
     BE: Backend<B>,
-    CFA: ClientForAleph<B, BE>,
+    CFA: ClientForDagestan<B, BE>,
 {
     fn best_block_number(&self) -> <B as Block>::Number {
         self.client.info().best_number

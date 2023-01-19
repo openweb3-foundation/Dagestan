@@ -3,7 +3,7 @@ mod validator_node;
 
 use std::{future::Future, sync::Arc};
 
-use aleph_primitives::{AuthorityId, SessionAuthorityData};
+use dagestan_primitives::{AuthorityId, SessionAuthorityData};
 use codec::Encode;
 use log::warn;
 pub use nonvalidator_node::run_nonvalidator_node;
@@ -18,9 +18,9 @@ pub use validator_node::run_validator_node;
 
 use crate::{
     crypto::AuthorityVerifier,
-    finalization::AlephFinalizer,
+    finalization::DagestanFinalizer,
     justification::{
-        AlephJustification, JustificationHandler, JustificationRequestSchedulerImpl, SessionInfo,
+        DagestanJustification, JustificationHandler, JustificationRequestSchedulerImpl, SessionInfo,
         SessionInfoProvider, Verifier,
     },
     last_block_of_session, mpsc,
@@ -53,8 +53,8 @@ impl From<SessionAuthorityData> for JustificationVerifier {
 }
 
 impl<B: Block> Verifier<B> for JustificationVerifier {
-    fn verify(&self, justification: &AlephJustification, hash: B::Hash) -> bool {
-        use AlephJustification::*;
+    fn verify(&self, justification: &DagestanJustification, hash: B::Hash) -> bool {
+        use DagestanJustification::*;
         let encoded_hash = hash.encode();
         match justification {
             CommitteeMultisignature(multisignature) => match self
@@ -63,7 +63,7 @@ impl<B: Block> Verifier<B> for JustificationVerifier {
             {
                 true => true,
                 false => {
-                    warn!(target: "aleph-justification", "Bad multisignature for block hash #{:?} {:?}", hash, multisignature);
+                    warn!(target: "dagestan-justification", "Bad multisignature for block hash #{:?} {:?}", hash, multisignature);
                     false
                 }
             },
@@ -71,12 +71,12 @@ impl<B: Block> Verifier<B> for JustificationVerifier {
                 Some(emergency_signer) => match emergency_signer.verify(&encoded_hash, signature) {
                     true => true,
                     false => {
-                        warn!(target: "aleph-justification", "Bad emergency signature for block hash #{:?} {:?}", hash, signature);
+                        warn!(target: "dagestan-justification", "Bad emergency signature for block hash #{:?} {:?}", hash, signature);
                         false
                     }
                 },
                 None => {
-                    warn!(target: "aleph-justification", "Received emergency signature for block with hash #{:?}, which has no emergency signer defined.", hash);
+                    warn!(target: "dagestan-justification", "Received emergency signature for block with hash #{:?}, which has no emergency signer defined.", hash);
                     false
                 }
             },
@@ -137,8 +137,8 @@ fn setup_justification_handler<B, H, C, BB, BE>(
 where
     B: Block,
     H: ExHashT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     BE: Backend<B> + 'static,
     BB: BlockchainBackend<B> + 'static + Send,
 {
@@ -157,7 +157,7 @@ where
         SessionInfoProviderImpl::new(session_map, session_period),
         network,
         blockchain_backend,
-        AlephFinalizer::new(client),
+        DagestanFinalizer::new(client),
         JustificationRequestSchedulerImpl::new(&session_period, &millisecs_per_block, MAX_ATTEMPTS),
         metrics,
         Default::default(),

@@ -1,4 +1,4 @@
-use primitives::SessionIndex;
+use dagestan_primitives::SessionIndex;
 use sp_std::vec::Vec;
 
 use crate::{Config, Event, FinalityScheduledVersionChange, FinalityVersion, Pallet};

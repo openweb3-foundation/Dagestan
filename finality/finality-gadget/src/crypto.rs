@@ -1,6 +1,6 @@
 use std::{convert::TryInto, sync::Arc};
 
-use aleph_primitives::{AuthorityId, AuthoritySignature, KEY_TYPE};
+use dagestan_primitives::{AuthorityId, AuthoritySignature, KEY_TYPE};
 use codec::{Decode, Encode};
 use sp_core::{crypto::KeyTypeId, ed25519::Signature as RawSignature};
 use sp_keystore::{CryptoStore, Error as KeystoreError};
@@ -65,7 +65,7 @@ impl AuthorityPen {
         })
     }
 
-    /// Constructs a new authority cryptography keystore for the given ID and the aleph key type.
+    /// Constructs a new authority cryptography keystore for the given ID and the dagestan key type.
     /// Will attempt to sign a test message to verify that signing works.
     /// Returns errors if anything goes wrong during this attempt, otherwise we assume the
     /// AuthorityPen will work for any future attempts at signing.

@@ -4,7 +4,7 @@ pub(crate) use block_finalizer::MockedBlockFinalizer;
 pub(crate) use block_request::MockedBlockRequester;
 pub(crate) use justification_handler_config::JustificationRequestSchedulerImpl;
 pub(crate) use proposal::{
-    aleph_data_from_blocks, aleph_data_from_headers, unvalidated_proposal_from_headers,
+    dagestan_data_from_blocks, dagestan_data_from_headers, unvalidated_proposal_from_headers,
 };
 pub(crate) use session_info::{SessionInfoProviderImpl, VerifierWrapper};
 

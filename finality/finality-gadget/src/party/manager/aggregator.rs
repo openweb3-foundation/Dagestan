@@ -13,7 +13,7 @@ use crate::{
     abft::SignatureSet,
     aggregation::Aggregator,
     crypto::Signature,
-    justification::{AlephJustification, JustificationNotification},
+    justification::{DagestanJustification, JustificationNotification},
     metrics::Checkpoint,
     network::data::Network,
     party::{
@@ -40,7 +40,7 @@ async fn process_new_block_data<B, CN, LN>(
     LN: Network<LegacyRmcNetworkData<B>>,
     <B as Block>::Hash: AsRef<[u8]>,
 {
-    trace!(target: "aleph-party", "Received unit {:?} in aggregator.", block);
+    trace!(target: "dagestan-party", "Received unit {:?} in aggregator.", block);
     if let Some(metrics) = &metrics {
         metrics.report_block(block.hash, std::time::Instant::now(), Checkpoint::Ordered);
     }
@@ -61,12 +61,12 @@ where
     let number = client.number(hash).unwrap().unwrap();
     // The unwrap might actually fail if data availability is not implemented correctly.
     let notification = JustificationNotification {
-        justification: AlephJustification::CommitteeMultisignature(multisignature),
+        justification: DagestanJustification::CommitteeMultisignature(multisignature),
         hash,
         number,
     };
     if let Err(e) = justifications_for_chain.unbounded_send(notification) {
-        error!(target: "aleph-party", "Issue with sending justification from Aggregator to JustificationHandler {:?}.", e);
+        error!(target: "dagestan-party", "Issue with sending justification from Aggregator to JustificationHandler {:?}.", e);
         return Err(());
     }
     Ok(())
@@ -96,7 +96,7 @@ where
         let block_num = block.num;
         async move {
             if block_num == session_boundaries.last_block() {
-                debug!(target: "aleph-party", "Aggregator is processing last block in session.");
+                debug!(target: "dagestan-party", "Aggregator is processing last block in session.");
             }
             block_num <= session_boundaries.last_block()
         }
@@ -108,7 +108,7 @@ where
     let mut status_ticker = time::interval(STATUS_REPORT_INTERVAL);
 
     loop {
-        trace!(target: "aleph-party", "Aggregator Loop started a next iteration");
+        trace!(target: "dagestan-party", "Aggregator Loop started a next iteration");
         tokio::select! {
             maybe_block = blocks_from_interpreter.next() => {
                 if let Some(block) = maybe_block {
@@ -119,7 +119,7 @@ where
                         &metrics
                     ).await;
                 } else {
-                    debug!(target: "aleph-party", "Blocks ended in aggregator.");
+                    debug!(target: "dagestan-party", "Blocks ended in aggregator.");
                     no_more_blocks = true;
                 }
             }
@@ -130,7 +130,7 @@ where
                         hash_of_last_block = None;
                     }
                 } else {
-                    debug!(target: "aleph-party", "The stream of multisigned hashes has ended. Terminating.");
+                    debug!(target: "dagestan-party", "The stream of multisigned hashes has ended. Terminating.");
                     break;
                 }
             }
@@ -138,16 +138,16 @@ where
                 aggregator.status_report();
             },
             _ = &mut exit_rx => {
-                debug!(target: "aleph-party", "Aggregator received exit signal. Terminating.");
+                debug!(target: "dagestan-party", "Aggregator received exit signal. Terminating.");
                 break;
             }
         }
         if hash_of_last_block.is_none() && no_more_blocks {
-            debug!(target: "aleph-party", "Aggregator processed all provided blocks. Terminating.");
+            debug!(target: "dagestan-party", "Aggregator processed all provided blocks. Terminating.");
             break;
         }
     }
-    debug!(target: "aleph-party", "Aggregator finished its work.");
+    debug!(target: "dagestan-party", "Aggregator finished its work.");
     Ok(())
 }
 
@@ -187,7 +187,7 @@ where
                     Aggregator::new_legacy(&multikeychain, rmc_network, metrics.clone())
                 }
             };
-            debug!(target: "aleph-party", "Running the aggregator task for {:?}", session_id);
+            debug!(target: "dagestan-party", "Running the aggregator task for {:?}", session_id);
             let result = run_aggregator(
                 aggregator_io,
                 io,
@@ -197,12 +197,12 @@ where
                 exit,
             )
             .await;
-            debug!(target: "aleph-party", "Aggregator task stopped for {:?}", session_id);
+            debug!(target: "dagestan-party", "Aggregator task stopped for {:?}", session_id);
             result
         }
     };
 
     let handle =
-        spawn_handle.spawn_essential_with_result("aleph/consensus_session_aggregator", task);
+        spawn_handle.spawn_essential_with_result("dagestan/consensus_session_aggregator", task);
     Task::new(handle, stop)
 }

@@ -4,21 +4,21 @@ use frame_support::{
     weights::Weight,
 };
 #[cfg(feature = "try-runtime")]
-use {frame_support::ensure, pallets_support::ensure_storage_version, sp_std::vec::Vec};
+use {frame_support::ensure, dagestan_support::ensure_storage_version, sp_std::vec::Vec};
 
 use crate::Config;
 
 #[storage_alias]
-type SessionForValidatorsChange = StorageValue<Aleph, ()>;
+type SessionForValidatorsChange = StorageValue<RuntimeCompanion, ()>;
 
 #[storage_alias]
-type MillisecsPerBlock = StorageValue<Aleph, ()>;
+type MillisecsPerBlock = StorageValue<RuntimeCompanion, ()>;
 
 #[storage_alias]
-type SessionPeriod = StorageValue<Aleph, ()>;
+type SessionPeriod = StorageValue<RuntimeCompanion, ()>;
 
 #[storage_alias]
-type Validators = StorageValue<Aleph, ()>;
+type Validators = StorageValue<RuntimeCompanion, ()>;
 
 /// Removes:
 ///   - SessionForValidatorsChange
@@ -31,10 +31,10 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
     fn on_runtime_upgrade() -> Weight {
         let mut writes = 0;
         let mut reads = 0;
-        log::info!(target: "pallet_aleph", "Running migration from STORAGE_VERSION 1 to 2");
+        log::info!(target: "dagestan_finality_runtime_companion", "Running migration from STORAGE_VERSION 1 to 2");
 
         if !SessionForValidatorsChange::exists() {
-            log::info!(target: "pallet_aleph", "Storage item SessionForValidatorsChange does not exist!");
+            log::info!(target: "dagestan_finality_runtime_companion", "Storage item SessionForValidatorsChange does not exist!");
         } else {
             writes += 1;
         }
@@ -42,7 +42,7 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
         reads += 1;
 
         if !MillisecsPerBlock::exists() {
-            log::info!(target: "pallet_aleph", "Storage item MillisecsPerBlock does not exist!");
+            log::info!(target: "dagestan_finality_runtime_companion", "Storage item MillisecsPerBlock does not exist!");
         } else {
             writes += 1;
         }
@@ -50,7 +50,7 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
         reads += 1;
 
         if !SessionPeriod::exists() {
-            log::info!(target: "pallet_aleph", "Storage item SessionPeriod does not exist!");
+            log::info!(target: "dagestan_finality_runtime_companion", "Storage item SessionPeriod does not exist!");
         } else {
             writes += 1;
         }
@@ -58,7 +58,7 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
         reads += 1;
 
         if !Validators::exists() {
-            log::info!(target: "pallet_aleph", "Storage item Validators does not exist!");
+            log::info!(target: "dagestan_finality_runtime_companion", "Storage item Validators does not exist!");
         } else {
             writes += 1;
         }

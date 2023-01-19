@@ -1,11 +1,11 @@
 use std::hash::{Hash, Hasher};
 
-use aleph_primitives::BlockNumber;
+use dagestan_primitives::BlockNumber;
 use sp_runtime::traits::{CheckedSub, Header as SubstrateHeader, One};
 
 use crate::{
     sync::{BlockIdentifier, Header, Justification as JustificationT},
-    AlephJustification,
+    DagestanJustification,
 };
 
 mod chain_status;
@@ -57,7 +57,7 @@ impl<H: SubstrateHeader<Number = BlockNumber>> Header for H {
 #[derive(Clone)]
 pub struct Justification<H: SubstrateHeader<Number = BlockNumber>> {
     header: H,
-    raw_justification: AlephJustification,
+    raw_justification: DagestanJustification,
 }
 
 impl<H: SubstrateHeader<Number = BlockNumber>> JustificationT for Justification<H> {

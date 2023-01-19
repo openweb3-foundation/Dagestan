@@ -24,7 +24,7 @@ use crate::{
         ConsensusParty, ConsensusPartyParams,
     },
     session_map::{AuthorityProviderImpl, FinalityNotificatorImpl, SessionMapUpdater},
-    AlephConfig, BlockchainBackend,
+    DagestanConfig, BlockchainBackend,
 };
 
 pub async fn new_pen(mnemonic: &str, keystore: Arc<dyn CryptoStore>) -> AuthorityPen {
@@ -37,17 +37,17 @@ pub async fn new_pen(mnemonic: &str, keystore: Arc<dyn CryptoStore>) -> Authorit
         .expect("we just generated this key so everything should work")
 }
 
-pub async fn run_validator_node<B, H, C, BB, BE, SC>(aleph_config: AlephConfig<B, H, C, SC, BB>)
+pub async fn run_validator_node<B, H, C, BB, BE, SC>(dagestan_config: DagestanConfig<B, H, C, SC, BB>)
 where
     B: Block,
     H: ExHashT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     BE: Backend<B> + 'static,
     BB: BlockchainBackend<B> + Send + 'static,
     SC: SelectChain<B> + 'static,
 {
-    let AlephConfig {
+    let DagestanConfig {
         network,
         client,
         blockchain_backend,
@@ -64,10 +64,10 @@ where
         validator_port,
         protocol_naming,
         ..
-    } = aleph_config;
+    } = dagestan_config;
 
     // We generate the phrase manually to only save the key in RAM, we don't want to have these
-    // relatively low-importance keys getting spammed around the absolutely crucial Aleph keys.
+    // relatively low-importance keys getting spammed around the absolutely crucial Dagestan keys.
     // The interface of `ed25519_generate_new` only allows to save in RAM by providing a mnemonic.
     let network_authority_pen = new_pen(
         Mnemonic::new(MnemonicType::Words12, Language::English).phrase(),
@@ -88,8 +88,8 @@ where
         spawn_handle.clone(),
     );
     let (_validator_network_exit, exit) = oneshot::channel();
-    spawn_handle.spawn("aleph/validator_network", None, async move {
-        debug!(target: "aleph-party", "Validator network has started.");
+    spawn_handle.spawn("dagestan/validator_network", None, async move {
+        debug!(target: "dagestan-party", "Validator network has started.");
         validator_network_service.run(exit).await
     });
 
@@ -105,8 +105,8 @@ where
         FinalityNotificatorImpl::new(client.clone()),
     );
     let session_authorities = map_updater.readonly_session_map();
-    spawn_handle.spawn("aleph/updater", None, async move {
-        debug!(target: "aleph-party", "SessionMapUpdater has started.");
+    spawn_handle.spawn("dagestan/updater", None, async move {
+        debug!(target: "dagestan-party", "SessionMapUpdater has started.");
         map_updater.run(session_period).await
     });
 
@@ -135,12 +135,12 @@ where
         }
     };
 
-    spawn_handle.spawn("aleph/justification_handler", None, handler_task);
-    debug!(target: "aleph-party", "JustificationHandler has started.");
+    spawn_handle.spawn("dagestan/justification_handler", None, handler_task);
+    debug!(target: "dagestan-party", "JustificationHandler has started.");
 
-    spawn_handle.spawn("aleph/connection_manager", None, connection_manager_task);
-    spawn_handle.spawn("aleph/gossip_network", None, gossip_network_task);
-    debug!(target: "aleph-party", "Gossip network has started.");
+    spawn_handle.spawn("dagestan/connection_manager", None, connection_manager_task);
+    spawn_handle.spawn("dagestan/gossip_network", None, gossip_network_task);
+    debug!(target: "dagestan-party", "Gossip network has started.");
 
     let party = ConsensusParty::new(ConsensusPartyParams {
         session_authorities,
@@ -166,7 +166,7 @@ where
         session_info: SessionInfoImpl::new(session_period),
     });
 
-    debug!(target: "aleph-party", "Consensus party has started.");
+    debug!(target: "dagestan-party", "Consensus party has started.");
     party.run().await;
-    error!(target: "aleph-party", "Consensus party has finished unexpectedly.");
+    error!(target: "dagestan-party", "Consensus party has finished unexpectedly.");
 }

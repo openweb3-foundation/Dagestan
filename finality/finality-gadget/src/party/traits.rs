@@ -72,7 +72,7 @@ pub trait SyncState<B: Block> {
     ///
     /// Like [`RequestBlocks::is_major_syncing`][1].
     ///
-    /// [1]: finality_aleph::network::RequestBlocks::is_major_syncing
+    /// [1]: dagestan_finality_gadget::network::RequestBlocks::is_major_syncing
     fn is_major_syncing(&self) -> bool;
 }
 

@@ -332,7 +332,7 @@ where
                 };
                 let maybe_command = match (maybe_address, handler.is_validator()) {
                     (Some(address), true) => {
-                        debug!(target: "aleph-network", "Adding addresses for session {:?} to reserved: {:?}", session_id, address);
+                        debug!(target: "dagestan-network", "Adding addresses for session {:?} to reserved: {:?}", session_id, address);
                         self.connections.add_peers(session_id, [address.peer_id()]);
                         Some(ConnectionCommand::AddReserved([address].into()))
                     }
@@ -344,7 +344,7 @@ where
                 }
             }
             None => {
-                debug!(target: "aleph-network", "Received message from unknown session: {:?}", message);
+                debug!(target: "dagestan-network", "Received message from unknown session: {:?}", message);
                 ManagerActions::noop()
             }
         }
@@ -439,7 +439,7 @@ where
         }
 
         if !authenticated.is_empty() || !missing.is_empty() {
-            info!(target: "aleph-network", "{}", status);
+            info!(target: "dagestan-network", "{}", status);
         }
     }
 }

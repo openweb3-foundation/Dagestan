@@ -3,12 +3,12 @@ use frame_support::{
     traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
     weights::Weight,
 };
-use primitives::CommitteeSeats;
+use dagestan_primitives::CommitteeSeats;
 #[cfg(feature = "try-runtime")]
 use {
     codec::{Decode, Encode},
     frame_support::ensure,
-    pallets_support::ensure_storage_version,
+    dagestan_support::ensure_storage_version,
     sp_std::vec::Vec,
 };
 

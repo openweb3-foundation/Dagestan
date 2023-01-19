@@ -49,7 +49,7 @@ impl<M: Data + Debug, A: AddressingInformation + TryFrom<Vec<M>> + Into<Vec<M>>>
 
         let missing_authorities = handler.missing_nodes();
         let node_count = handler.node_count();
-        info!(target: "aleph-network", "{}/{} authorities known for session {}.", node_count.0-missing_authorities.len(), node_count.0, handler.session_id().0);
+        info!(target: "dagestan-network", "{}/{} authorities known for session {}.", node_count.0-missing_authorities.len(), node_count.0, handler.session_id().0);
         Some(authentication)
     }
 
@@ -75,7 +75,7 @@ impl<M: Data + Debug, A: AddressingInformation + TryFrom<Vec<M>> + Into<Vec<M>>>
         authentication: Authentication<A>,
         handler: &mut SessionHandler<M, A>,
     ) -> (Option<A>, Option<PeerAuthentications<M, A>>) {
-        debug!(target: "aleph-network", "Handling broadcast with authentication {:?}.", authentication);
+        debug!(target: "dagestan-network", "Handling broadcast with authentication {:?}.", authentication);
         let address = match handler.handle_authentication(authentication.clone()) {
             Some(address) => Some(address),
             None => return (None, None),
@@ -84,7 +84,7 @@ impl<M: Data + Debug, A: AddressingInformation + TryFrom<Vec<M>> + Into<Vec<M>>>
         if !self.should_rebroadcast(&node_id) {
             return (address, None);
         }
-        trace!(target: "aleph-network", "Rebroadcasting {:?}.", authentication);
+        trace!(target: "dagestan-network", "Rebroadcasting {:?}.", authentication);
         self.last_broadcast.insert(node_id, Instant::now());
         (address, Some(PeerAuthentications::NewOnly(authentication)))
     }
@@ -97,7 +97,7 @@ impl<M: Data + Debug, A: AddressingInformation + TryFrom<Vec<M>> + Into<Vec<M>>>
         legacy_authentication: LegacyAuthentication<M>,
         handler: &mut SessionHandler<M, A>,
     ) -> (Option<A>, Option<PeerAuthentications<M, A>>) {
-        debug!(target: "aleph-network", "Handling broadcast with legacy authentication {:?}.", legacy_authentication);
+        debug!(target: "dagestan-network", "Handling broadcast with legacy authentication {:?}.", legacy_authentication);
         let address = match handler.handle_legacy_authentication(legacy_authentication.clone()) {
             Some(address) => Some(address),
             None => return (None, None),
@@ -106,7 +106,7 @@ impl<M: Data + Debug, A: AddressingInformation + TryFrom<Vec<M>> + Into<Vec<M>>>
         if !self.should_legacy_rebroadcast(&node_id) {
             return (address, None);
         }
-        trace!(target: "aleph-network", "Rebroadcasting {:?}.", legacy_authentication);
+        trace!(target: "dagestan-network", "Rebroadcasting {:?}.", legacy_authentication);
         self.last_legacy_broadcast.insert(node_id, Instant::now());
         (
             address,

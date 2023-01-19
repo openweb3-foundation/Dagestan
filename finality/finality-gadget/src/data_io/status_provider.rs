@@ -6,12 +6,12 @@ use sp_runtime::{
 
 use crate::data_io::{
     chain_info::ChainInfoProvider,
-    proposal::{AlephProposal, ProposalStatus},
+    proposal::{DagestanProposal, ProposalStatus},
 };
 
 pub fn get_proposal_status<B, CIP>(
     chain_info_provider: &mut CIP,
-    proposal: &AlephProposal<B>,
+    proposal: &DagestanProposal<B>,
     old_status: Option<&ProposalStatus<B>>,
 ) -> ProposalStatus<B>
 where
@@ -27,7 +27,7 @@ where
     }
 
     if is_hopeless_fork(chain_info_provider, proposal) {
-        debug!(target: "aleph-finality", "Encountered a hopeless fork proposal {:?}.", proposal);
+        debug!(target: "dagestan-finality", "Encountered a hopeless fork proposal {:?}.", proposal);
         return Ignore;
     }
 
@@ -82,7 +82,7 @@ where
     }
 }
 
-fn is_hopeless_fork<B, CIP>(chain_info_provider: &mut CIP, proposal: &AlephProposal<B>) -> bool
+fn is_hopeless_fork<B, CIP>(chain_info_provider: &mut CIP, proposal: &DagestanProposal<B>) -> bool
 where
     B: BlockT,
     CIP: ChainInfoProvider<B>,
@@ -103,7 +103,7 @@ where
     false
 }
 
-fn is_ancestor_finalized<B, CIP>(chain_info_provider: &mut CIP, proposal: &AlephProposal<B>) -> bool
+fn is_ancestor_finalized<B, CIP>(chain_info_provider: &mut CIP, proposal: &DagestanProposal<B>) -> bool
 where
     B: BlockT,
     CIP: ChainInfoProvider<B>,
@@ -126,7 +126,7 @@ where
 // Checks that the subsequent blocks in the branch are in the parent-child relation, as required.
 fn is_branch_ancestry_correct<B, CIP>(
     chain_info_provider: &mut CIP,
-    proposal: &AlephProposal<B>,
+    proposal: &DagestanProposal<B>,
 ) -> bool
 where
     B: BlockT,
@@ -164,7 +164,7 @@ mod tests {
         data_io::{
             chain_info::{AuxFinalizationChainInfoProvider, CachedChainInfoProvider},
             proposal::{
-                AlephProposal,
+                DagestanProposal,
                 PendingProposalStatus::*,
                 ProposalStatus::{self, *},
             },
@@ -177,17 +177,17 @@ mod tests {
         SessionBoundaries, SessionId, SessionPeriod,
     };
 
-    // A large number only for the purpose of creating `AlephProposal`s
+    // A large number only for the purpose of creating `DagestanProposal`s
     const DUMMY_SESSION_LEN: u32 = 1_000_000;
 
-    fn proposal_from_headers(headers: Vec<Header>) -> AlephProposal<Block> {
+    fn proposal_from_headers(headers: Vec<Header>) -> DagestanProposal<Block> {
         let unvalidated = unvalidated_proposal_from_headers(headers);
         let session_boundaries =
             SessionBoundaries::new(SessionId(0), SessionPeriod(DUMMY_SESSION_LEN));
         unvalidated.validate_bounds(&session_boundaries).unwrap()
     }
 
-    fn proposal_from_blocks(blocks: Vec<Block>) -> AlephProposal<Block> {
+    fn proposal_from_blocks(blocks: Vec<Block>) -> DagestanProposal<Block> {
         let headers = blocks.into_iter().map(|b| b.header().clone()).collect();
         proposal_from_headers(headers)
     }
@@ -219,7 +219,7 @@ mod tests {
     fn verify_proposal_status(
         cached_cip: &mut TestCachedChainInfo,
         aux_cip: &mut TestAuxChainInfo,
-        proposal: &AlephProposal<Block>,
+        proposal: &DagestanProposal<Block>,
         correct_status: ProposalStatus<Block>,
     ) {
         let status_a = get_proposal_status(aux_cip, proposal, None);

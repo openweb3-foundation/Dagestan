@@ -1,6 +1,6 @@
 use std::{collections::HashSet, marker::PhantomData, sync::Arc};
 
-use aleph_primitives::{AlephSessionApi, KEY_TYPE};
+use dagestan_primitives::{DagestanSessionApi, KEY_TYPE};
 use async_trait::async_trait;
 use futures::channel::oneshot;
 use log::{debug, info, trace, warn};
@@ -14,7 +14,7 @@ use sp_runtime::{
 
 use crate::{
     abft::{
-        current_create_aleph_config, legacy_create_aleph_config, run_current_member,
+        current_create_dagestan_config, legacy_create_dagestan_config, run_current_member,
         run_legacy_member, SpawnHandle, SpawnHandleT,
     },
     crypto::{AuthorityPen, AuthorityVerifier},
@@ -67,7 +67,7 @@ type CurrentNetworkType<B> = SimpleNetwork<
 struct SubtasksParams<C, SC, B, N, BE>
 where
     B: BlockT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     N: Network<VersionedNetworkData<B>> + 'static,
@@ -91,7 +91,7 @@ where
 pub struct NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
 where
     B: BlockT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
@@ -113,8 +113,8 @@ where
 impl<C, SC, B, RB, BE, SM> NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
 where
     B: BlockT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
@@ -169,17 +169,17 @@ where
             ..
         } = params;
         let consensus_config =
-            legacy_create_aleph_config(n_members, node_id, session_id, self.unit_creation_delay);
+            legacy_create_dagestan_config(n_members, node_id, session_id, self.unit_creation_delay);
         let data_network = data_network.map();
 
-        let (unfiltered_aleph_network, rmc_network) =
-            split(data_network, "aleph_network", "rmc_network");
-        let (data_store, aleph_network) = DataStore::new(
+        let (unfiltered_dagestan_network, rmc_network) =
+            split(data_network, "dagestan_network", "rmc_network");
+        let (data_store, dagestan_network) = DataStore::new(
             session_boundaries.clone(),
             self.client.clone(),
             self.block_requester.clone(),
             Default::default(),
-            unfiltered_aleph_network,
+            unfiltered_dagestan_network,
         );
         Subtasks::new(
             exit_rx,
@@ -187,7 +187,7 @@ where
                 subtask_common.clone(),
                 multikeychain.clone(),
                 consensus_config,
-                aleph_network.into(),
+                dagestan_network.into(),
                 data_provider,
                 ordered_data_interpreter,
                 backup,
@@ -227,17 +227,17 @@ where
             ..
         } = params;
         let consensus_config =
-            current_create_aleph_config(n_members, node_id, session_id, self.unit_creation_delay);
+            current_create_dagestan_config(n_members, node_id, session_id, self.unit_creation_delay);
         let data_network = data_network.map();
 
-        let (unfiltered_aleph_network, rmc_network) =
-            split(data_network, "aleph_network", "rmc_network");
-        let (data_store, aleph_network) = DataStore::new(
+        let (unfiltered_dagestan_network, rmc_network) =
+            split(data_network, "dagestan_network", "rmc_network");
+        let (data_store, dagestan_network) = DataStore::new(
             session_boundaries.clone(),
             self.client.clone(),
             self.block_requester.clone(),
             Default::default(),
-            unfiltered_aleph_network,
+            unfiltered_dagestan_network,
         );
         Subtasks::new(
             exit_rx,
@@ -245,7 +245,7 @@ where
                 subtask_common.clone(),
                 multikeychain.clone(),
                 consensus_config,
-                aleph_network.into(),
+                dagestan_network.into(),
                 data_provider,
                 ordered_data_interpreter,
                 backup,
@@ -345,17 +345,17 @@ where
         {
             #[cfg(feature = "only_legacy")]
             _ if self.only_legacy() => {
-                info!(target: "aleph-party", "Running session with legacy-only AlephBFT version.");
+                info!(target: "dagestan-party", "Running session with legacy-only AlephBFT version.");
                 self.legacy_subtasks(params)
             }
             // The `as`es here should be removed, but this would require a pallet migration and I
             // am lazy.
             Ok(version) if version == CURRENT_VERSION as u32 => {
-                info!(target: "aleph-party", "Running session with AlephBFT version {}, which is current.", version);
+                info!(target: "dagestan-party", "Running session with AlephBFT version {}, which is current.", version);
                 self.current_subtasks(params)
             }
             Ok(version) if version == LEGACY_VERSION as u32 => {
-                info!(target: "aleph-party", "Running session with AlephBFT version {}, which is legacy.", version);
+                info!(target: "dagestan-party", "Running session with AlephBFT version {}, which is legacy.", version);
                 self.legacy_subtasks(params)
             }
             Ok(version) => {
@@ -380,8 +380,8 @@ where
 impl<C, SC, B, RB, BE, SM> NodeSessionManager for NodeSessionManagerImpl<C, SC, B, RB, BE, SM>
 where
     B: BlockT,
-    C: crate::ClientForAleph<B, BE> + Send + Sync + 'static,
-    C::Api: aleph_primitives::AlephSessionApi<B>,
+    C: crate::ClientForDagestan<B, BE> + Send + Sync + 'static,
+    C::Api: dagestan_primitives::DagestanSessionApi<B>,
     BE: Backend<B> + 'static,
     SC: SelectChain<B> + 'static,
     RB: RequestBlocks<B>,
@@ -403,9 +403,9 @@ where
 
         AuthorityTask::new(
             self.spawn_handle
-                .spawn_essential("aleph/session_authority", async move {
+                .spawn_essential("dagestan/session_authority", async move {
                     if subtasks.wait_completion().await.is_err() {
-                        warn!(target: "aleph-party", "Authority subtasks failed.");
+                        warn!(target: "dagestan-party", "Authority subtasks failed.");
                     }
                 }),
             node_id,
@@ -455,7 +455,7 @@ where
             .unwrap()
             .into_iter()
             .collect();
-        trace!(target: "aleph-data-store", "Found {:?} consensus keys in our local keystore {:?}", our_consensus_keys.len(), our_consensus_keys);
+        trace!(target: "dagestan-data-store", "Found {:?} consensus keys in our local keystore {:?}", our_consensus_keys.len(), our_consensus_keys);
         authorities
             .iter()
             .position(|pkey| our_consensus_keys.contains(&pkey.into()))

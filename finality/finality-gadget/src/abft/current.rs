@@ -6,7 +6,7 @@ use sp_runtime::traits::Block;
 use crate::{
     abft::{common::unit_creation_delay_fn, NetworkWrapper, SpawnHandleT},
     crypto::Signature,
-    data_io::{AlephData, OrderedDataInterpreter},
+    data_io::{DagestanData, OrderedDataInterpreter},
     network::data::Network,
     oneshot,
     party::{
@@ -28,10 +28,10 @@ pub fn run_member<
     multikeychain: Keychain,
     config: Config,
     network: NetworkWrapper<
-        current_aleph_bft::NetworkData<Hasher, AlephData<B>, Signature, SignatureSet<Signature>>,
+        current_aleph_bft::NetworkData<Hasher, DagestanData<B>, Signature, SignatureSet<Signature>>,
         ADN,
     >,
-    data_provider: impl current_aleph_bft::DataProvider<AlephData<B>> + Send + 'static,
+    data_provider: impl current_aleph_bft::DataProvider<DagestanData<B>> + Send + 'static,
     ordered_data_interpreter: OrderedDataInterpreter<B, C>,
     backup: ABFTBackup,
 ) -> Task {
@@ -46,7 +46,7 @@ pub fn run_member<
     let task = {
         let spawn_handle = spawn_handle.clone();
         async move {
-            debug!(target: "aleph-party", "Running the member task for {:?}", session_id);
+            debug!(target: "dagestan-party", "Running the member task for {:?}", session_id);
             current_aleph_bft::run_session(
                 config,
                 local_io,
@@ -56,15 +56,15 @@ pub fn run_member<
                 member_terminator,
             )
             .await;
-            debug!(target: "aleph-party", "Member task stopped for {:?}", session_id);
+            debug!(target: "dagestan-party", "Member task stopped for {:?}", session_id);
         }
     };
 
-    let handle = spawn_handle.spawn_essential("aleph/consensus_session_member", task);
+    let handle = spawn_handle.spawn_essential("dagestan/consensus_session_member", task);
     Task::new(handle, stop)
 }
 
-pub fn create_aleph_config(
+pub fn create_dagestan_config(
     n_members: usize,
     node_id: NodeIndex,
     session_id: SessionId,

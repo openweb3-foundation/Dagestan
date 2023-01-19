@@ -9,7 +9,7 @@ use crate::{
     data_io::{
         chain_info::{AuxFinalizationChainInfoProvider, CachedChainInfoProvider},
         status_provider::get_proposal_status,
-        AlephData, ChainInfoProvider,
+        DagestanData, ChainInfoProvider,
     },
     mpsc::TrySendError,
     BlockHashNum, SessionBoundaries,
@@ -18,13 +18,13 @@ use crate::{
 type InterpretersChainInfoProvider<B, C> =
     CachedChainInfoProvider<B, AuxFinalizationChainInfoProvider<B, Arc<C>>>;
 
-/// Takes as input ordered `AlephData` from `AlephBFT` and pushes blocks that should be finalized
+/// Takes as input ordered `DagestanData` from `AlephBFT` and pushes blocks that should be finalized
 /// to an output channel. The other end of the channel is held by the aggregator whose goal is to
 /// create multisignatures under the finalized blocks.
 pub struct OrderedDataInterpreter<B: BlockT, C: HeaderBackend<B>> {
     blocks_to_finalize_tx: mpsc::UnboundedSender<BlockHashNum<B>>,
     chain_info_provider: InterpretersChainInfoProvider<B, C>,
-    last_finalized_by_aleph: BlockHashNum<B>,
+    last_finalized_by_dagestan: BlockHashNum<B>,
     session_boundaries: SessionBoundaries<B>,
 }
 
@@ -52,23 +52,23 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         client: Arc<C>,
         session_boundaries: SessionBoundaries<B>,
     ) -> Self {
-        let last_finalized_by_aleph =
+        let last_finalized_by_dagestan =
             get_last_block_prev_session(session_boundaries.clone(), client.clone());
         let chain_info_provider =
-            AuxFinalizationChainInfoProvider::new(client, last_finalized_by_aleph.clone());
+            AuxFinalizationChainInfoProvider::new(client, last_finalized_by_dagestan.clone());
         let chain_info_provider =
             CachedChainInfoProvider::new(chain_info_provider, Default::default());
 
         OrderedDataInterpreter {
             blocks_to_finalize_tx,
             chain_info_provider,
-            last_finalized_by_aleph,
+            last_finalized_by_dagestan,
             session_boundaries,
         }
     }
 
     pub fn set_last_finalized(&mut self, block: BlockHashNum<B>) {
-        self.last_finalized_by_aleph = block;
+        self.last_finalized_by_dagestan = block;
     }
 
     pub fn chain_info_provider(&mut self) -> &mut InterpretersChainInfoProvider<B, C> {
@@ -82,12 +82,12 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         self.blocks_to_finalize_tx.unbounded_send(block)
     }
 
-    pub fn blocks_to_finalize_from_data(&mut self, new_data: AlephData<B>) -> Vec<BlockHashNum<B>> {
+    pub fn blocks_to_finalize_from_data(&mut self, new_data: DagestanData<B>) -> Vec<BlockHashNum<B>> {
         let unvalidated_proposal = new_data.head_proposal;
         let proposal = match unvalidated_proposal.validate_bounds(&self.session_boundaries) {
             Ok(proposal) => proposal,
             Err(error) => {
-                warn!(target: "aleph-finality", "Incorrect proposal {:?} passed through data availability, session bounds: {:?}, error: {:?}", unvalidated_proposal, self.session_boundaries, error);
+                warn!(target: "dagestan-finality", "Incorrect proposal {:?} passed through data availability, session bounds: {:?}, error: {:?}", unvalidated_proposal, self.session_boundaries, error);
                 return Vec::new();
             }
         };
@@ -100,7 +100,7 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         match status {
             Finalize(blocks) => blocks,
             Ignore => {
-                debug!(target: "aleph-finality", "Ignoring proposal {:?} in interpreter.", proposal);
+                debug!(target: "dagestan-finality", "Ignoring proposal {:?} in interpreter.", proposal);
                 Vec::new()
             }
             Pending(pending_status) => {
@@ -112,14 +112,14 @@ impl<B: BlockT, C: HeaderBackend<B>> OrderedDataInterpreter<B, C> {
         }
     }
 
-    pub fn data_finalized(&mut self, data: AlephData<B>) {
+    pub fn data_finalized(&mut self, data: DagestanData<B>) {
         for block in self.blocks_to_finalize_from_data(data) {
             self.set_last_finalized(block.clone());
             self.chain_info_provider()
                 .inner()
                 .update_aux_finalized(block.clone());
             if let Err(err) = self.send_block_to_finalize(block) {
-                error!(target: "aleph-finality", "Error in sending a block from FinalizationHandler, {}", err);
+                error!(target: "dagestan-finality", "Error in sending a block from FinalizationHandler, {}", err);
             }
         }
     }

@@ -135,7 +135,7 @@ where
         let dialer = self.dialer.clone();
         let next_to_interface = self.next_to_interface.clone();
         self.spawn_handle
-            .spawn("aleph/clique_network_outgoing", None, async move {
+            .spawn("dagestan/clique_network_outgoing", None, async move {
                 outgoing(
                     secret_key,
                     public_key,
@@ -156,7 +156,7 @@ where
         let secret_key = self.secret_key.clone();
         let next_to_interface = self.next_to_interface.clone();
         self.spawn_handle
-            .spawn("aleph/clique_network_incoming", None, async move {
+            .spawn("dagestan/clique_network_incoming", None, async move {
                 incoming(secret_key, stream, result_for_parent, next_to_interface).await;
             });
     }

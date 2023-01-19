@@ -20,11 +20,11 @@ use aleph_bft_crypto::{PartialMultisignature, Signature};
 use codec::{Decode, Encode};
 pub use crypto::Keychain;
 pub use current::{
-    create_aleph_config as current_create_aleph_config, run_member as run_current_member,
+    create_dagestan_config as current_create_dagestan_config, run_member as run_current_member,
     VERSION as CURRENT_VERSION,
 };
 pub use legacy::{
-    create_aleph_config as legacy_create_aleph_config, run_member as run_legacy_member,
+    create_dagestan_config as legacy_create_dagestan_config, run_member as run_legacy_member,
     VERSION as LEGACY_VERSION,
 };
 pub use network::{CurrentNetworkData, LegacyNetworkData, NetworkWrapper};

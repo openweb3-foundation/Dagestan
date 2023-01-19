@@ -326,7 +326,7 @@ where
                     self.manager.update_validator_session(pre_session).await?;
                 if let Some(result_for_user) = result_for_user {
                     if result_for_user.send(data_from_network).is_err() {
-                        warn!(target: "aleph-network", "Failed to send started session.")
+                        warn!(target: "dagestan-network", "Failed to send started session.")
                     }
                 }
                 Ok(actions)
@@ -351,20 +351,20 @@ where
 
         let mut status_ticker = time::interval(STATUS_REPORT_INTERVAL);
         loop {
-            trace!(target: "aleph-network", "Manager Loop started a next iteration");
+            trace!(target: "dagestan-network", "Manager Loop started a next iteration");
             tokio::select! {
                 maybe_command = self.commands_from_user.next() => {
-                    trace!(target: "aleph-network", "Manager received a command from user");
+                    trace!(target: "dagestan-network", "Manager received a command from user");
                     match maybe_command {
                         Some(command) => match self.handle_command(command).await {
                             Ok(to_send) => self.handle_manager_actions(to_send)?,
-                            Err(e) => warn!(target: "aleph-network", "Failed to update handler: {:?}", e),
+                            Err(e) => warn!(target: "dagestan-network", "Failed to update handler: {:?}", e),
                         },
                         None => return Err(Error::CommandsChannel),
                     }
                 },
                 maybe_message = self.messages_from_user.next() => {
-                    trace!(target: "aleph-network", "Manager received a message from user");
+                    trace!(target: "dagestan-network", "Manager received a message from user");
                     match maybe_message {
                         Some((message, session_id, recipient)) => for message in self.manager.on_user_message(message, session_id, recipient) {
                             self.send_data(message);
@@ -373,12 +373,12 @@ where
                     }
                 },
                 maybe_data = self.validator_network.next() => {
-                    trace!(target: "aleph-network", "Manager received some data from network");
+                    trace!(target: "dagestan-network", "Manager received some data from network");
                     match maybe_data {
                         Some(DataInSession{data, session_id}) => if let Err(e) = self.manager.send_session_data(&session_id, data) {
                             match e {
-                                SendError::UserSend => trace!(target: "aleph-network", "Failed to send to user in session."),
-                                SendError::NoSession => trace!(target: "aleph-network", "Received message for unknown session."),
+                                SendError::UserSend => trace!(target: "dagestan-network", "Failed to send to user in session."),
+                                SendError::NoSession => trace!(target: "dagestan-network", "Received message for unknown session."),
                             }
                         },
                         None => return Err(Error::ValidatorNetwork),
@@ -386,17 +386,17 @@ where
                 },
                 maybe_authentication = self.gossip_network.next() => {
                     let (authentication, _) = maybe_authentication.map_err(Error::GossipNetwork)?;
-                    trace!(target: "aleph-network", "Manager received an authentication from network");
+                    trace!(target: "dagestan-network", "Manager received an authentication from network");
                     match authentication.try_into() {
                         Ok(message) => {
                             let manager_actions = self.manager.on_discovery_message(message);
                             self.handle_manager_actions(manager_actions)?
                         },
-                        Err(e) => warn!(target: "aleph-network", "Error casting versioned authentication to discovery message: {:?}", e),
+                        Err(e) => warn!(target: "dagestan-network", "Error casting versioned authentication to discovery message: {:?}", e),
                     }
                 },
                 _ = maintenance.tick() => {
-                    debug!(target: "aleph-network", "Manager starts maintenence");
+                    debug!(target: "dagestan-network", "Manager starts maintenence");
                     for to_send in self.manager.discovery() {
                         self.send_authentications(to_send.into())?;
                     }

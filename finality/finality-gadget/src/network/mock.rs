@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use aleph_primitives::KEY_TYPE;
+use dagestan_primitives::KEY_TYPE;
 use codec::{Decode, Encode, Output};
 use futures::{channel::mpsc, StreamExt};
 use sp_keystore::{testing::KeyStore, CryptoStore};

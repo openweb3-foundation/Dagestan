@@ -9,7 +9,7 @@ use sp_api::BlockT;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Hash as SpHash;
 
-use crate::data_io::{AlephData, DataProvider, OrderedDataInterpreter};
+use crate::data_io::{DagestanData, DataProvider, OrderedDataInterpreter};
 
 /// A convenience trait for gathering all of the desired hash characteristics.
 pub trait Hash: AsRef<[u8]> + StdHash + Eq + Clone + Codec + Debug + Send + Sync {}
@@ -17,31 +17,31 @@ pub trait Hash: AsRef<[u8]> + StdHash + Eq + Clone + Codec + Debug + Send + Sync
 impl<T: AsRef<[u8]> + StdHash + Eq + Clone + Codec + Debug + Send + Sync> Hash for T {}
 
 #[async_trait::async_trait]
-impl<B: BlockT> current_aleph_bft::DataProvider<AlephData<B>> for DataProvider<B> {
-    async fn get_data(&mut self) -> Option<AlephData<B>> {
+impl<B: BlockT> current_aleph_bft::DataProvider<DagestanData<B>> for DataProvider<B> {
+    async fn get_data(&mut self) -> Option<DagestanData<B>> {
         DataProvider::get_data(self).await
     }
 }
 
 #[async_trait::async_trait]
-impl<B: BlockT> legacy_aleph_bft::DataProvider<AlephData<B>> for DataProvider<B> {
-    async fn get_data(&mut self) -> Option<AlephData<B>> {
+impl<B: BlockT> legacy_aleph_bft::DataProvider<DagestanData<B>> for DataProvider<B> {
+    async fn get_data(&mut self) -> Option<DagestanData<B>> {
         DataProvider::get_data(self).await
     }
 }
 
 impl<B: BlockT, C: HeaderBackend<B> + Send + 'static>
-    current_aleph_bft::FinalizationHandler<AlephData<B>> for OrderedDataInterpreter<B, C>
+    current_aleph_bft::FinalizationHandler<DagestanData<B>> for OrderedDataInterpreter<B, C>
 {
-    fn data_finalized(&mut self, data: AlephData<B>) {
+    fn data_finalized(&mut self, data: DagestanData<B>) {
         OrderedDataInterpreter::data_finalized(self, data)
     }
 }
 
 impl<B: BlockT, C: HeaderBackend<B> + Send + 'static>
-    legacy_aleph_bft::FinalizationHandler<AlephData<B>> for OrderedDataInterpreter<B, C>
+    legacy_aleph_bft::FinalizationHandler<DagestanData<B>> for OrderedDataInterpreter<B, C>
 {
-    fn data_finalized(&mut self, data: AlephData<B>) {
+    fn data_finalized(&mut self, data: DagestanData<B>) {
         OrderedDataInterpreter::data_finalized(self, data)
     }
 }

@@ -98,24 +98,24 @@ pub fn rotate(
     backup_path: Option<PathBuf>,
     session_id: u32,
 ) -> Result<ABFTBackup, BackupLoadError> {
-    debug!(target: "aleph-party", "Loading AlephBFT backup for session {:?}", session_id);
+    debug!(target: "dagestan-party", "Loading AlephBFT backup for session {:?}", session_id);
     let session_path = if let Some(path) = backup_path {
         path.join(format!("{}", session_id))
     } else {
-        debug!(target: "aleph-party", "Passing empty backup for session {:?} as no backup argument was provided", session_id);
+        debug!(target: "dagestan-party", "Passing empty backup for session {:?} as no backup argument was provided", session_id);
         return Ok((Box::new(io::sink()), Box::new(io::empty())));
     };
-    debug!(target: "aleph-party", "Loading backup for session {:?} at path {:?}", session_id, session_path);
+    debug!(target: "dagestan-party", "Loading backup for session {:?} at path {:?}", session_id, session_path);
 
     let session_backup_idxs = get_session_backup_idxs(&session_path)?;
 
     let backup_loader = load_backup(&session_path, &session_backup_idxs)?;
 
     let next_backup_path = get_next_path(&session_path, &session_backup_idxs);
-    debug!(target: "aleph-party", "Loaded backup for session {:?}. Creating new backup file at {:?}", session_id, next_backup_path);
+    debug!(target: "dagestan-party", "Loaded backup for session {:?}. Creating new backup file at {:?}", session_id, next_backup_path);
     let backup_saver = Box::new(File::create(next_backup_path)?);
 
-    debug!(target: "aleph-party", "Backup rotation done for session {:?}", session_id);
+    debug!(target: "dagestan-party", "Backup rotation done for session {:?}", session_id);
     Ok((backup_saver, backup_loader))
 }
 
@@ -134,11 +134,11 @@ pub fn remove(path: Option<PathBuf>, session_id: u32) {
     };
     match fs::remove_dir_all(path) {
         Ok(()) => {
-            debug!(target: "aleph-party", "Removed backup for session {}", session_id);
+            debug!(target: "dagestan-party", "Removed backup for session {}", session_id);
         }
         Err(err) => {
             if err.kind() != io::ErrorKind::NotFound {
-                warn!(target: "aleph-party", "Error cleaning up backup for session {}: {}", session_id, err);
+                warn!(target: "dagestan-party", "Error cleaning up backup for session {}: {}", session_id, err);
             }
         }
     }

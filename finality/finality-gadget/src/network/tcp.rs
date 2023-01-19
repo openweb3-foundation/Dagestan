@@ -1,6 +1,6 @@
 use std::{io::Error as IoError, iter, net::ToSocketAddrs as _};
 
-use aleph_primitives::AuthorityId;
+use dagestan_primitives::AuthorityId;
 use codec::{Decode, Encode};
 use log::info;
 use sp_core::crypto::KeyTypeId;
@@ -322,7 +322,7 @@ pub async fn new_tcp_network<A: ToSocketAddrs>(
 
 #[cfg(test)]
 pub mod testing {
-    use aleph_primitives::AuthorityId;
+    use dagestan_primitives::AuthorityId;
 
     use super::SignedTcpAddressingInformation;
     use crate::{crypto::AuthorityPen, network::NetworkIdentity};

@@ -12,7 +12,7 @@ use sp_runtime::{
 };
 
 use crate::{
-    data_io::{proposal::UnvalidatedAlephProposal, AlephData, MAX_DATA_BRANCH_LEN},
+    data_io::{proposal::UnvalidatedDagestanProposal, DagestanData, MAX_DATA_BRANCH_LEN},
     metrics::Checkpoint,
     BlockHashNum, Metrics, SessionBoundaries,
 };
@@ -53,7 +53,7 @@ where
     {
         Some((*header.parent_hash(), block.num - <NumberFor<B>>::one()).into())
     } else {
-        warn!(target: "aleph-data-store", "Trying to fetch the parent of an unknown block {:?}.", block);
+        warn!(target: "dagestan-data-store", "Trying to fetch the parent of an unknown block {:?}.", block);
         None
     }
 }
@@ -62,7 +62,7 @@ pub fn get_proposal<B, C>(
     client: &C,
     best_block: BlockHashNum<B>,
     finalized_block: BlockHashNum<B>,
-) -> Result<AlephData<B>, ()>
+) -> Result<DagestanData<B>, ()>
 where
     B: BlockT,
     C: HeaderBackend<B>,
@@ -81,13 +81,13 @@ where
         let num_last = finalized_block.num + <NumberFor<B>>::saturated_from(branch.len());
         // The hashes in `branch` are ordered from top to bottom -- need to reverse.
         branch.reverse();
-        Ok(AlephData {
-            head_proposal: UnvalidatedAlephProposal::new(branch, num_last),
+        Ok(DagestanData {
+            head_proposal: UnvalidatedDagestanProposal::new(branch, num_last),
         })
     } else {
         // By backtracking from the best block we reached a block conflicting with best finalized.
         // This is most likely a bug, or some extremely unlikely synchronization issue of the client.
-        warn!(target: "aleph-data-store", "Error computing proposal. Conflicting blocks: {:?}, finalized {:?}", curr_block, finalized_block);
+        warn!(target: "dagestan-data-store", "Error computing proposal. Conflicting blocks: {:?}, finalized {:?}", curr_block, finalized_block);
         Err(())
     }
 }
@@ -112,7 +112,7 @@ struct ChainInfo<B: BlockT> {
     highest_finalized: BlockHashNum<B>,
 }
 
-/// ChainTracker keeps track of the best_block in a given session and allows to generate `AlephData`.
+/// ChainTracker keeps track of the best_block in a given session and allows to generate `DagestanData`.
 /// Internally it frequently updates a `data_to_propose` field that is shared with a `DataProvider`, which
 /// in turn is a tiny wrapper around this single shared resource that takes out `data_to_propose` whenever
 /// `get_data` is called.
@@ -124,7 +124,7 @@ where
 {
     select_chain: SC,
     client: Arc<C>,
-    data_to_propose: Arc<Mutex<Option<AlephData<B>>>>,
+    data_to_propose: Arc<Mutex<Option<DagestanData<B>>>>,
     session_boundaries: SessionBoundaries<B>,
     prev_chain_info: Option<ChainInfo<B>>,
     config: ChainTrackerConfig,
@@ -162,7 +162,7 @@ where
 
     fn update_data(&mut self, best_block_in_session: &BlockHashNum<B>) {
         // We use best_block_in_session argument and the highest_finalized block from the client and compute
-        // the corresponding `AlephData<B>` in `data_to_propose` for AlephBFT. To not recompute this many
+        // the corresponding `DagestanData<B>` in `data_to_propose` for AlephBFT. To not recompute this many
         // times we remember these "inputs" in `prev_chain_info` and upon match we leave the old value
         // of `data_to_propose` unaffected.
 
@@ -199,7 +199,7 @@ where
         }
         if best_block_in_session.num < finalized_block.num {
             // Because of the client synchronization, in extremely rare cases this could happen.
-            warn!(target: "aleph-data-store", "Error updating data. best_block {:?} is lower than finalized {:?}.", best_block_in_session, finalized_block);
+            warn!(target: "dagestan-data-store", "Error updating data. best_block {:?} is lower than finalized {:?}.", best_block_in_session, finalized_block);
             return;
         }
 
@@ -281,7 +281,7 @@ where
 
                 }
                 _ = &mut exit => {
-                    debug!(target: "aleph-data-store", "Task for refreshing best chain received exit signal. Terminating.");
+                    debug!(target: "dagestan-data-store", "Task for refreshing best chain received exit signal. Terminating.");
                     return;
                 }
             }
@@ -292,7 +292,7 @@ where
 /// Provides data to AlephBFT for ordering.
 #[derive(Clone)]
 pub struct DataProvider<B: BlockT> {
-    data_to_propose: Arc<Mutex<Option<AlephData<B>>>>,
+    data_to_propose: Arc<Mutex<Option<DagestanData<B>>>>,
     metrics: Option<Metrics<<B::Header as HeaderT>::Hash>>,
 }
 
@@ -305,7 +305,7 @@ pub struct DataProvider<B: BlockT> {
 //    last finalized till `best_block` with the restriction that the branch must be truncated to length
 //    at most MAX_DATA_BRANCH_LEN.
 impl<B: BlockT> DataProvider<B> {
-    pub async fn get_data(&mut self) -> Option<AlephData<B>> {
+    pub async fn get_data(&mut self) -> Option<DagestanData<B>> {
         let data_to_propose = (*self.data_to_propose.lock()).take();
 
         if let Some(data) = &data_to_propose {
@@ -316,7 +316,7 @@ impl<B: BlockT> DataProvider<B> {
                     Checkpoint::Ordering,
                 );
             }
-            debug!(target: "aleph-data-store", "Outputting {:?} in get_data", data);
+            debug!(target: "dagestan-data-store", "Outputting {:?} in get_data", data);
         };
 
         data_to_propose
@@ -338,7 +338,7 @@ mod tests {
             data_provider::{ChainTracker, ChainTrackerConfig},
             DataProvider, MAX_DATA_BRANCH_LEN,
         },
-        testing::{client_chain_builder::ClientChainBuilder, mocks::aleph_data_from_blocks},
+        testing::{client_chain_builder::ClientChainBuilder, mocks::dagestan_data_from_blocks},
         SessionBoundaries, SessionId, SessionPeriod,
     };
 
@@ -417,7 +417,7 @@ mod tests {
             sleep_enough().await;
 
             let data = data_provider.get_data().await.unwrap();
-            let expected_data = aleph_data_from_blocks(blocks[..MAX_DATA_BRANCH_LEN].to_vec());
+            let expected_data = dagestan_data_from_blocks(blocks[..MAX_DATA_BRANCH_LEN].to_vec());
             assert_eq!(data, expected_data);
         })
         .await;
@@ -434,7 +434,7 @@ mod tests {
                 sleep_enough().await;
                 let data = data_provider.get_data().await.unwrap();
                 let expected_data =
-                    aleph_data_from_blocks(blocks[height..(MAX_DATA_BRANCH_LEN + height)].to_vec());
+                    dagestan_data_from_blocks(blocks[height..(MAX_DATA_BRANCH_LEN + height)].to_vec());
                 assert_eq!(data, expected_data);
             }
             chain_builder.finalize_block(&blocks.last().unwrap().header.hash());
@@ -458,7 +458,7 @@ mod tests {
                 .await;
             sleep_enough().await;
             let data = data_provider.get_data().await.unwrap();
-            let expected_data = aleph_data_from_blocks(blocks[0..MAX_DATA_BRANCH_LEN].to_vec());
+            let expected_data = dagestan_data_from_blocks(blocks[0..MAX_DATA_BRANCH_LEN].to_vec());
             assert_eq!(data, expected_data);
 
             // Finalize a block beyond the last block in the session.

@@ -16,7 +16,7 @@ pub trait BlockFinalizer<B: Block> {
     ) -> Result<(), Error>;
 }
 
-pub struct AlephFinalizer<B, BE, C>
+pub struct DagestanFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
@@ -26,21 +26,21 @@ where
     phantom: PhantomData<(B, BE)>,
 }
 
-impl<B, BE, C> AlephFinalizer<B, BE, C>
+impl<B, BE, C> DagestanFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
     C: HeaderBackend<B> + LockImportRun<B, BE> + Finalizer<B, BE>,
 {
     pub(crate) fn new(client: Arc<C>) -> Self {
-        AlephFinalizer {
+        DagestanFinalizer {
             client,
             phantom: PhantomData,
         }
     }
 }
 
-impl<B, BE, C> BlockFinalizer<B> for AlephFinalizer<B, BE, C>
+impl<B, BE, C> BlockFinalizer<B> for DagestanFinalizer<B, BE, C>
 where
     B: Block,
     BE: Backend<B>,
@@ -54,11 +54,11 @@ where
     ) -> Result<(), Error> {
         let status = self.client.info();
         if status.finalized_number >= block_number {
-            warn!(target: "aleph-finality", "trying to finalize a block with hash {} and number {}
+            warn!(target: "dagestan-finality", "trying to finalize a block with hash {} and number {}
                that is not greater than already finalized {}", hash, block_number, status.finalized_number);
         }
 
-        debug!(target: "aleph-finality", "Finalizing block with hash {:?} and number {:?}. Previous best: #{:?}.", hash, block_number, status.finalized_number);
+        debug!(target: "dagestan-finality", "Finalizing block with hash {:?} and number {:?}. Previous best: #{:?}.", hash, block_number, status.finalized_number);
 
         let update_res = self.client.lock_import_and_run(|import_op| {
             // NOTE: all other finalization logic should come here, inside the lock
@@ -66,7 +66,7 @@ where
                 .apply_finality(import_op, BlockId::Hash(hash), justification, true)
         });
         let status = self.client.info();
-        debug!(target: "aleph-finality", "Attempted to finalize block with hash {:?}. Current best: #{:?}.", hash, status.finalized_number);
+        debug!(target: "dagestan-finality", "Attempted to finalize block with hash {:?}. Current best: #{:?}.", hash, status.finalized_number);
         update_res
     }
 }

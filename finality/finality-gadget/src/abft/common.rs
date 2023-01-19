@@ -47,21 +47,21 @@ pub struct DelayConfig {
     pub newest_request_delay: DelaySchedule,
 }
 
-pub struct AlephConfig {
+pub struct DagestanConfig {
     delay_config: DelayConfig,
     n_members: usize,
     node_id: NodeIndex,
     session_id: SessionId,
 }
 
-impl AlephConfig {
+impl DagestanConfig {
     pub fn new(
         delay_config: DelayConfig,
         n_members: usize,
         node_id: NodeIndex,
         session_id: SessionId,
-    ) -> AlephConfig {
-        AlephConfig {
+    ) -> DagestanConfig {
+        DagestanConfig {
             delay_config,
             n_members,
             node_id,
@@ -98,30 +98,30 @@ impl From<DelayConfig> for current_aleph_bft::DelayConfig {
     }
 }
 
-impl From<AlephConfig> for current_aleph_bft::Config {
-    fn from(cfg: AlephConfig) -> Self {
-        let mut aleph_config = current_aleph_bft::default_config(
+impl From<DagestanConfig> for current_aleph_bft::Config {
+    fn from(cfg: DagestanConfig) -> Self {
+        let mut dagestan_config = current_aleph_bft::default_config(
             cfg.n_members.into(),
             cfg.node_id.into(),
             cfg.session_id.0 as u64,
         );
-        aleph_config.max_round = MAX_ROUNDS;
-        aleph_config.delay_config = cfg.delay_config.into();
+        dagestan_config.max_round = MAX_ROUNDS;
+        dagestan_config.delay_config = cfg.delay_config.into();
 
-        aleph_config
+        dagestan_config
     }
 }
 
-impl From<AlephConfig> for legacy_aleph_bft::Config {
-    fn from(cfg: AlephConfig) -> Self {
-        let mut aleph_config = legacy_aleph_bft::default_config(
+impl From<DagestanConfig> for legacy_aleph_bft::Config {
+    fn from(cfg: DagestanConfig) -> Self {
+        let mut dagestan_config = legacy_aleph_bft::default_config(
             cfg.n_members.into(),
             cfg.node_id.into(),
             cfg.session_id.0 as u64,
         );
-        aleph_config.max_round = MAX_ROUNDS;
-        aleph_config.delay_config = cfg.delay_config.into();
+        dagestan_config.max_round = MAX_ROUNDS;
+        dagestan_config.delay_config = cfg.delay_config.into();
 
-        aleph_config
+        dagestan_config
     }
 }

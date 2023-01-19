@@ -1,6 +1,6 @@
 use std::fmt::{Display, Error as FmtError, Formatter};
 
-use aleph_primitives::BlockNumber;
+use dagestan_primitives::BlockNumber;
 use futures::StreamExt;
 use sc_client_api::client::{FinalityNotifications, ImportNotifications};
 use sp_runtime::traits::{Block as BlockT, Header as SubstrateHeader};

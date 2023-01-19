@@ -76,7 +76,7 @@ where
             match TryFrom::try_from(data) {
                 Ok(message) => return Some(message),
                 Err(e) => {
-                    warn!(target: "aleph-network", "Error decoding message in MapReceiver: {}", e)
+                    warn!(target: "dagestan-network", "Error decoding message in MapReceiver: {}", e)
                 }
             }
         }

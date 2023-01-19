@@ -1,9 +1,9 @@
-//! This pallet is the runtime companion of the Aleph finality gadget.
+//! This pallet is the runtime companion of the Dagestan finality gadget.
 //!
 //! Currently, it only provides support for changing sessions but in the future
 //! it will allow reporting equivocation in AlephBFT.
 //!
-//! This pallet relies on an extension of the `AlephSessionApi` Runtime API to handle the finality
+//! This pallet relies on an extension of the `DagestanSessionApi` Runtime API to handle the finality
 //! version. The scheduled version change is persisted as `FinalityScheduledVersionChange`. This
 //! value stores the information about a scheduled finality version change, where `version_incoming`
 //! is the version to be set and `session` is the session on which the new version will be set.
@@ -31,7 +31,7 @@ use frame_support::{
     traits::{OneSessionHandler, StorageVersion},
 };
 pub use pallet::*;
-use primitives::{SessionIndex, Version, VersionChange};
+use dagestan_primitives::{SessionIndex, Version, VersionChange};
 use sp_std::prelude::*;
 
 /// The current storage version.
@@ -47,7 +47,7 @@ pub mod pallet {
         pallet_prelude::{BlockNumberFor, OriginFor},
     };
     use pallet_session::SessionManager;
-    use pallets_support::StorageMigration;
+    use dagestan_support::StorageMigration;
 
     use super::*;
     use crate::traits::SessionInfoProvider;
@@ -89,8 +89,8 @@ pub mod pallet {
                     }
                     _ => {
                         log::warn!(
-                            target: "pallet_aleph",
-                            "On chain storage version of pallet aleph is {:?} but it should not be bigger than 2",
+                            target: "dagestan_finality_runtime_companion",
+                            "On chain storage version of pallet dagestan is {:?} but it should not be bigger than 2",
                             on_chain
                         );
                         Weight::zero()

@@ -46,8 +46,8 @@ use codec::{Decode, Encode};
 use frame_support::{log::info, traits::StorageVersion};
 pub use impls::{compute_validator_scaled_total_rewards, LENIENT_THRESHOLD};
 pub use pallet::*;
-use pallets_support::StorageMigration;
-pub use primitives::EraValidators;
+use dagestan_support::StorageMigration;
+pub use dagestan_primitives::EraValidators;
 use scale_info::TypeInfo;
 use sp_std::{
     collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -72,7 +72,7 @@ pub mod pallet {
         pallet_prelude::{BlockNumberFor, OriginFor},
     };
     use pallet_session::SessionManager;
-    use primitives::{
+    use dagestan_primitives::{
         BanConfig as BanConfigStruct, BanInfo, BanReason, BlockCount, CommitteeSeats,
         ElectionOpenness, EraIndex, SessionCount,
     };

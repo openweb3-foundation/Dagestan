@@ -1,6 +1,6 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Instant};
 
-use aleph_primitives::ALEPH_ENGINE_ID;
+use dagestan_primitives::ALEPH_ENGINE_ID;
 use futures::channel::mpsc::{TrySendError, UnboundedSender};
 use log::{debug, warn};
 use sc_client_api::backend::Backend;
@@ -19,11 +19,11 @@ use crate::{
     metrics::{Checkpoint, Metrics},
 };
 
-pub struct AlephBlockImport<Block, Be, I>
+pub struct DagestanBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForAleph<Block, Be>,
+    I: crate::ClientForDagestan<Block, Be>,
 {
     inner: Arc<I>,
     justification_tx: UnboundedSender<JustificationNotification<Block>>,
@@ -47,18 +47,18 @@ impl<Block: BlockT> From<DecodeError> for SendJustificationError<Block> {
     }
 }
 
-impl<Block, Be, I> AlephBlockImport<Block, Be, I>
+impl<Block, Be, I> DagestanBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForAleph<Block, Be>,
+    I: crate::ClientForDagestan<Block, Be>,
 {
     pub fn new(
         inner: Arc<I>,
         justification_tx: UnboundedSender<JustificationNotification<Block>>,
         metrics: Option<Metrics<<Block::Header as Header>::Hash>>,
-    ) -> AlephBlockImport<Block, Be, I> {
-        AlephBlockImport {
+    ) -> DagestanBlockImport<Block, Be, I> {
+        DagestanBlockImport {
             inner,
             justification_tx,
             metrics,
@@ -72,33 +72,33 @@ where
         number: NumberFor<Block>,
         justification: Justification,
     ) -> Result<(), SendJustificationError<Block>> {
-        debug!(target: "aleph-justification", "Importing justification for block {:?}", number);
+        debug!(target: "dagestan-justification", "Importing justification for block {:?}", number);
         if justification.0 != ALEPH_ENGINE_ID {
             return Err(SendJustificationError::Consensus(Box::new(
-                ConsensusError::ClientImport("Aleph can import only Aleph justifications.".into()),
+                ConsensusError::ClientImport("Dagestan can import only Dagestan justifications.".into()),
             )));
         }
         let justification_raw = justification.1;
-        let aleph_justification = backwards_compatible_decode(justification_raw)?;
+        let dagestan_justification = backwards_compatible_decode(justification_raw)?;
 
         self.justification_tx
             .unbounded_send(JustificationNotification {
                 hash,
                 number,
-                justification: aleph_justification,
+                justification: dagestan_justification,
             })
             .map_err(SendJustificationError::Send)
     }
 }
 
-impl<Block, Be, I> Clone for AlephBlockImport<Block, Be, I>
+impl<Block, Be, I> Clone for DagestanBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForAleph<Block, Be>,
+    I: crate::ClientForDagestan<Block, Be>,
 {
     fn clone(&self) -> Self {
-        AlephBlockImport {
+        DagestanBlockImport {
             inner: self.inner.clone(),
             justification_tx: self.justification_tx.clone(),
             metrics: self.metrics.clone(),
@@ -108,11 +108,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Block, Be, I> BlockImport<Block> for AlephBlockImport<Block, Be, I>
+impl<Block, Be, I> BlockImport<Block> for DagestanBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForAleph<Block, Be> + Send,
+    I: crate::ClientForDagestan<Block, Be> + Send,
     for<'a> &'a I:
         BlockImport<Block, Error = ConsensusError, Transaction = TransactionFor<I, Block>>,
     TransactionFor<I, Block>: Send + 'static,
@@ -140,7 +140,7 @@ where
 
         let justifications = block.justifications.take();
 
-        debug!(target: "aleph-justification", "Importing block {:?} {:?} {:?}", number, block.header.hash(), block.post_hash());
+        debug!(target: "dagestan-justification", "Importing block {:?} {:?} {:?}", number, block.header.hash(), block.post_hash());
         let import_result = self.inner.import_block(block, cache).await;
 
         let imported_aux = match import_result {
@@ -152,12 +152,12 @@ where
         if let Some(justification) =
             justifications.and_then(|just| just.into_justification(ALEPH_ENGINE_ID))
         {
-            debug!(target: "aleph-justification", "Got justification along imported block {:?}", number);
+            debug!(target: "dagestan-justification", "Got justification along imported block {:?}", number);
 
             if let Err(e) =
                 self.send_justification(post_hash, number, (ALEPH_ENGINE_ID, justification))
             {
-                warn!(target: "aleph-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
+                warn!(target: "dagestan-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
             }
         }
 
@@ -170,16 +170,16 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Block, Be, I> JustificationImport<Block> for AlephBlockImport<Block, Be, I>
+impl<Block, Be, I> JustificationImport<Block> for DagestanBlockImport<Block, Be, I>
 where
     Block: BlockT,
     Be: Backend<Block>,
-    I: crate::ClientForAleph<Block, Be>,
+    I: crate::ClientForDagestan<Block, Be>,
 {
     type Error = ConsensusError;
 
     async fn on_start(&mut self) -> Vec<(Block::Hash, NumberFor<Block>)> {
-        debug!(target: "aleph-justification", "On start called");
+        debug!(target: "dagestan-justification", "On start called");
         Vec::new()
     }
 
@@ -189,7 +189,7 @@ where
         number: NumberFor<Block>,
         justification: Justification,
     ) -> Result<(), Self::Error> {
-        debug!(target: "aleph-justification", "import_justification called on {:?}", justification);
+        debug!(target: "dagestan-justification", "import_justification called on {:?}", justification);
         self.send_justification(hash, number, justification)
             .map_err(|error| match error {
                 SendJustificationError::Send(_) => ConsensusError::ClientImport(String::from(
@@ -197,7 +197,7 @@ where
                 )),
                 SendJustificationError::Consensus(e) => *e,
                 SendJustificationError::Decode(e) => {
-                    warn!(target: "aleph-justification", "Justification for block {:?} decoded incorrectly: {}", number, e);
+                    warn!(target: "dagestan-justification", "Justification for block {:?} decoded incorrectly: {}", number, e);
                     ConsensusError::ClientImport(String::from("Could not decode justification"))
                 }
             })

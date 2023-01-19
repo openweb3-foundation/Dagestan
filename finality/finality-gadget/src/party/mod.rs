@@ -98,7 +98,7 @@ where
                 }
                 let last_finalized_number = self.chain_state.finalized_number();
                 if last_finalized_number >= last_block {
-                    debug!(target: "aleph-party", "Skipping session {:?} early because block {:?} is already finalized", session_id, last_finalized_number);
+                    debug!(target: "dagestan-party", "Skipping session {:?} early because block {:?} is already finalized", session_id, last_finalized_number);
                     return;
                 }
             }
@@ -121,13 +121,13 @@ where
         };
         let authorities = authority_data.authorities();
 
-        trace!(target: "aleph-party", "Authority data for session {:?}: {:?}", session_id, authorities);
+        trace!(target: "dagestan-party", "Authority data for session {:?}: {:?}", session_id, authorities);
         let mut maybe_authority_task = if let Some(node_id) =
             self.session_manager.node_idx(authorities).await
         {
             match backup::rotate(self.backup_saving_path.clone(), session_id.0) {
                 Ok(backup) => {
-                    debug!(target: "aleph-party", "Running session {:?} as authority id {:?}", session_id, node_id);
+                    debug!(target: "dagestan-party", "Running session {:?} as authority id {:?}", session_id, node_id);
                     Some(
                         self.session_manager
                             .spawn_authority_task_for_session(
@@ -149,12 +149,12 @@ where
                 }
             }
         } else {
-            debug!(target: "aleph-party", "Running session {:?} as non-authority", session_id);
+            debug!(target: "dagestan-party", "Running session {:?} as non-authority", session_id);
             if let Err(e) = self
                 .session_manager
                 .start_nonvalidator_session(session_id, authorities)
             {
-                warn!(target: "aleph-party", "Failed to start nonvalidator session{:?}: {}", session_id, e);
+                warn!(target: "dagestan-party", "Failed to start nonvalidator session{:?}: {}", session_id, e);
             }
             None
         };
@@ -170,7 +170,7 @@ where
                 _ = &mut check_session_status => {
                     let last_finalized_number = self.chain_state.finalized_number();
                     if last_finalized_number >= last_block {
-                        debug!(target: "aleph-party", "Terminating session {:?}", session_id);
+                        debug!(target: "dagestan-party", "Terminating session {:?}", session_id);
                         break;
                     }
                     check_session_status = Delay::new(SESSION_STATUS_CHECK_PERIOD);
@@ -180,7 +180,7 @@ where
                         Some(notification) => {
                             match notification.await {
                                 Err(e) => {
-                                    warn!(target: "aleph-party", "Error with subscription {:?}", e);
+                                    warn!(target: "dagestan-party", "Error with subscription {:?}", e);
                                     start_next_session_network = Some(self.session_authorities.subscribe_to_insertion(next_session_id).await);
                                     None
                                 },
@@ -202,14 +202,14 @@ where
                                     next_session_authorities,
                                 ).await
                             {
-                                warn!(target: "aleph-party", "Failed to early start validator session{:?}: {}", next_session_id, e);
+                                warn!(target: "dagestan-party", "Failed to early start validator session{:?}: {}", next_session_id, e);
                             }
                         None => {
                             if let Err(e) = self
                                 .session_manager
                                 .start_nonvalidator_session(next_session_id, next_session_authorities)
                             {
-                                warn!(target: "aleph-party", "Failed to early start nonvalidator session{:?}: {}", next_session_id, e);
+                                warn!(target: "dagestan-party", "Failed to early start nonvalidator session{:?}: {}", next_session_id, e);
                             }
                         }
                     }
@@ -221,26 +221,26 @@ where
                         None => None,
                     }
                 } => {
-                    warn!(target: "aleph-party", "Authority task ended prematurely, giving up for this session.");
+                    warn!(target: "dagestan-party", "Authority task ended prematurely, giving up for this session.");
                     maybe_authority_task = None;
                 },
             }
         }
         if let Some(task) = maybe_authority_task {
-            debug!(target: "aleph-party", "Stopping the authority task.");
+            debug!(target: "dagestan-party", "Stopping the authority task.");
             if task.stop().await.is_err() {
-                warn!(target: "aleph-party", "Authority task did not stop silently");
+                warn!(target: "dagestan-party", "Authority task did not stop silently");
             }
         }
         if let Err(e) = self.session_manager.stop_session(session_id) {
-            warn!(target: "aleph-party", "Session Manager failed to stop in session {:?}: {}", session_id, e)
+            warn!(target: "dagestan-party", "Session Manager failed to stop in session {:?}: {}", session_id, e)
         }
     }
 
     pub async fn run(mut self) {
         let starting_session = self.catch_up().await;
         for curr_id in starting_session.0.. {
-            info!(target: "aleph-party", "Running session {:?}.", curr_id);
+            info!(target: "dagestan-party", "Running session {:?}.", curr_id);
             self.run_session(SessionId(curr_id)).await;
         }
     }
@@ -268,7 +268,7 @@ mod tests {
         time::Duration,
     };
 
-    use aleph_primitives::{AuthorityId, SessionAuthorityData};
+    use dagestan_primitives::{AuthorityId, SessionAuthorityData};
     use sp_runtime::testing::UintAuthorityId;
     use tokio::{task::JoinHandle, time::sleep};
 

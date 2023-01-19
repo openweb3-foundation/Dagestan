@@ -86,7 +86,7 @@ where
                 .for_block_num(last_finalized_number + 1u32.into())
                 .await;
             if verifier.is_none() {
-                debug!(target: "aleph-justification", "Verifier for session {:?} not yet available. Waiting {}ms and will try again ...", current_session, self.verifier_timeout.as_millis());
+                debug!(target: "dagestan-justification", "Verifier for session {:?} not yet available. Waiting {}ms and will try again ...", current_session, self.verifier_timeout.as_millis());
                 Delay::new(self.verifier_timeout).await;
                 continue;
             }
@@ -122,10 +122,10 @@ fn wrap_channel_with_logging<B: BlockT>(
 ) -> impl Stream<Item = JustificationNotification<B>> {
     channel
         .inspect(move |_| {
-            debug!(target: "aleph-justification", "Got justification ({})", label);
+            debug!(target: "dagestan-justification", "Got justification ({})", label);
         })
         .chain(futures::stream::iter(std::iter::from_fn(move || {
-            error!(target: "aleph-justification", "Justification ({}) stream ended.", label);
+            error!(target: "dagestan-justification", "Justification ({}) stream ended.", label);
             None
         })))
 }

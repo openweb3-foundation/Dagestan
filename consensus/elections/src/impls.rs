@@ -3,7 +3,7 @@ use frame_support::{
     log::{debug, info},
     pallet_prelude::Get,
 };
-use primitives::{BanConfig as BanConfigStruct, BanInfo, BanReason, CommitteeSeats, EraValidators};
+use dagestan_primitives::{BanConfig as BanConfigStruct, BanInfo, BanReason, CommitteeSeats, EraValidators};
 use sp_runtime::Perbill;
 use sp_staking::{EraIndex, SessionIndex};
 use sp_std::{

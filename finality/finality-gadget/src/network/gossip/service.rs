@@ -174,17 +174,17 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                         match network.sender(peer_id.clone(), protocol) {
                             Ok(s) => sender.insert(s),
                             Err(e) => {
-                                debug!(target: "aleph-network", "Failed creating sender. Dropping message: {}", e);
+                                debug!(target: "dagestan-network", "Failed creating sender. Dropping message: {}", e);
                                 continue;
                             }
                         }
                     };
                     if let Err(e) = s.send(data.encode()).await {
-                        debug!(target: "aleph-network", "Failed sending data to peer. Dropping sender and message: {}", e);
+                        debug!(target: "dagestan-network", "Failed sending data to peer. Dropping sender and message: {}", e);
                         sender = None;
                     }
                 } else {
-                    debug!(target: "aleph-network", "Sender was dropped for peer {:?}. Peer sender exiting.", peer_id);
+                    debug!(target: "dagestan-network", "Sender was dropped for peer {:?}. Peer sender exiting.", peer_id);
                     return;
                 }
             }
@@ -204,7 +204,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                         // Receiver can also be dropped when thread cannot send to peer. In case receiver is dropped this entry will be removed by Event::NotificationStreamClosed
                         // No need to remove the entry here
                         if e.is_disconnected() {
-                            trace!(target: "aleph-network", "Failed sending data to peer because peer_sender receiver is dropped: {:?}", peer);
+                            trace!(target: "dagestan-network", "Failed sending data to peer because peer_sender receiver is dropped: {:?}", peer);
                         }
                         Err(SendError::SendingFailed)
                     }
@@ -217,7 +217,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
 
     fn send(&mut self, data: D, peer_id: N::PeerId, protocol: Protocol) {
         if let Err(e) = self.send_to_peer(data, peer_id.clone(), protocol) {
-            trace!(target: "aleph-network", "Failed to send to peer{:?}, {:?}", peer_id, e);
+            trace!(target: "dagestan-network", "Failed to send to peer{:?}, {:?}", peer_id, e);
         }
     }
 
@@ -247,7 +247,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
         let peer_id = match self.random_peer(&peer_ids, protocol) {
             Some(peer_id) => peer_id.clone(),
             None => {
-                trace!(target: "aleph-network", "Failed to send to random peer, no peers are available.");
+                trace!(target: "dagestan-network", "Failed to send to random peer, no peers are available.");
                 return;
             }
         };
@@ -268,7 +268,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
         use Event::*;
         match event {
             StreamOpened(peer, protocol) => {
-                trace!(target: "aleph-network", "StreamOpened event for peer {:?} and the protocol {:?}.", peer, protocol);
+                trace!(target: "dagestan-network", "StreamOpened event for peer {:?} and the protocol {:?}.", peer, protocol);
                 let rx = match &protocol {
                     Protocol::Authentication => {
                         let (tx, rx) = tracing_unbounded("mpsc_notification_stream_authentication");
@@ -284,13 +284,13 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                     }
                 };
                 self.spawn_handle.spawn(
-                    "aleph/network/peer_sender",
+                    "dagestan/network/peer_sender",
                     None,
                     self.peer_sender(peer, rx, protocol),
                 );
             }
             StreamClosed(peer, protocol) => {
-                trace!(target: "aleph-network", "StreamClosed event for peer {:?} and protocol {:?}", peer, protocol);
+                trace!(target: "dagestan-network", "StreamClosed event for peer {:?} and protocol {:?}", peer, protocol);
                 match protocol {
                     Protocol::Authentication => {
                         self.authentication_connected_peers.remove(&peer);
@@ -310,7 +310,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                                 .messages_for_authentication_user
                                 .unbounded_send((data, peer_id.clone()))?,
                             Err(e) => {
-                                warn!(target: "aleph-network", "Error decoding authentication protocol message: {}", e)
+                                warn!(target: "dagestan-network", "Error decoding authentication protocol message: {}", e)
                             }
                         },
                         // This is a bit of a placeholder for now, as we are not yet using this
@@ -320,7 +320,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                                 .messages_for_block_sync_user
                                 .unbounded_send((data, peer_id.clone()))?,
                             Err(e) => {
-                                warn!(target: "aleph-network", "Error decoding block sync protocol message: {}", e)
+                                warn!(target: "dagestan-network", "Error decoding block sync protocol message: {}", e)
                             }
                         },
                     };
@@ -342,7 +342,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
             self.block_sync_connected_peers.len()
         ));
 
-        info!(target: "aleph-network", "{}", status);
+        info!(target: "dagestan-network", "{}", status);
     }
 
     pub async fn run(mut self) {
@@ -353,11 +353,11 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
             tokio::select! {
                 maybe_event = events_from_network.next_event() => match maybe_event {
                     Some(event) => if let Err(e) = self.handle_network_event(event) {
-                        error!(target: "aleph-network", "Cannot forward messages to user: {:?}", e);
+                        error!(target: "dagestan-network", "Cannot forward messages to user: {:?}", e);
                         return;
                     },
                     None => {
-                        error!(target: "aleph-network", "Network event stream ended.");
+                        error!(target: "dagestan-network", "Network event stream ended.");
                         return;
                     }
                 },
@@ -366,7 +366,7 @@ impl<N: RawNetwork, D: Data> Service<N, D> {
                     Some(Command::SendToRandom(message, peer_ids, protocol)) => self.send_to_random(message, peer_ids, protocol),
                     Some(Command::Send(message, peer_id, protocol)) => self.send(message, peer_id, protocol),
                     None => {
-                        error!(target: "aleph-network", "User message stream ended.");
+                        error!(target: "dagestan-network", "User message stream ended.");
                         return;
                     }
                 },

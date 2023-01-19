@@ -10,7 +10,7 @@ use tokio::{task::JoinHandle, time::timeout};
 use AcceptancePolicy::*;
 
 use crate::{
-    justification::{AlephJustification, JustificationHandler, JustificationHandlerConfig},
+    justification::{DagestanJustification, JustificationHandler, JustificationHandlerConfig},
     testing::mocks::{
         create_block, AcceptancePolicy, Backend, JustificationRequestSchedulerImpl,
         MockedBlockFinalizer, MockedBlockRequester, SessionInfoProviderImpl, TBlock,
@@ -42,7 +42,7 @@ type Environment = (
 
 fn create_justification_notification_for(block: TBlock) -> JustificationNotification<TBlock> {
     JustificationNotification {
-        justification: AlephJustification::CommitteeMultisignature(SignatureSet::with_size(
+        justification: DagestanJustification::CommitteeMultisignature(SignatureSet::with_size(
             0.into(),
         )),
         hash: block.hash(),

@@ -1,6 +1,6 @@
 use std::{fmt, marker::PhantomData, time::Instant};
 
-use aleph_primitives::ALEPH_ENGINE_ID;
+use dagestan_primitives::ALEPH_ENGINE_ID;
 use log::{debug, error, info, warn};
 use sc_client_api::blockchain::Info;
 use sp_api::{BlockId, BlockT, NumberFor};
@@ -156,16 +156,16 @@ where
         } = notification;
 
         if number <= last_finalized || number > stop_h {
-            debug!(target: "aleph-justification", "Not finalizing block {:?}. Last finalized {:?}, stop_h {:?}", number, last_finalized, stop_h);
+            debug!(target: "dagestan-justification", "Not finalizing block {:?}. Last finalized {:?}, stop_h {:?}", number, last_finalized, stop_h);
             return;
         };
 
         if !(verifier.verify(&justification, hash)) {
-            warn!(target: "aleph-justification", "Error when verifying justification for block {:?} {:?}", number, hash);
+            warn!(target: "dagestan-justification", "Error when verifying justification for block {:?} {:?}", number, hash);
             return;
         };
 
-        debug!(target: "aleph-justification", "Finalizing block {:?} {:?}", number, hash);
+        debug!(target: "dagestan-justification", "Finalizing block {:?} {:?}", number, hash);
         let finalization_res = self.finalizer.finalize_block(
             hash,
             number,
@@ -175,20 +175,20 @@ where
             Ok(()) => {
                 self.justification_request_scheduler.on_block_finalized();
                 self.request_status.reset();
-                debug!(target: "aleph-justification", "Successfully finalized {:?}", number);
+                debug!(target: "dagestan-justification", "Successfully finalized {:?}", number);
                 if let Some(metrics) = &self.metrics {
                     metrics.report_block(hash, Instant::now(), Checkpoint::Finalized);
                 }
             }
             Err(e) => {
-                error!(target: "aleph-justification", "Fail in finalization of {:?} {:?} -- {:?}", number, hash, e);
+                error!(target: "dagestan-justification", "Fail in finalization of {:?} {:?} -- {:?}", number, hash, e);
             }
         }
     }
 
     pub fn status_report(&self) {
         if self.request_status.should_report() {
-            info!(target: "aleph-justification", "Justification requester status report: {}", self.request_status);
+            info!(target: "dagestan-justification", "Justification requester status report: {}", self.request_status);
         }
     }
 
@@ -200,7 +200,7 @@ where
                 self.request_wanted(wanted, &info);
             }
             SchedulerActions::ClearQueue => {
-                debug!(target: "aleph-justification", "Clearing justification request queue");
+                debug!(target: "dagestan-justification", "Clearing justification request queue");
                 self.block_requester.clear_justification_requests();
             }
             SchedulerActions::Wait => (),
@@ -212,7 +212,7 @@ where
     }
 
     fn do_request(&mut self, hash: &<B as BlockT>::Hash, num: NumberFor<B>) {
-        debug!(target: "aleph-justification",
+        debug!(target: "dagestan-justification",
                "We have block {:?} with hash {:?}. Requesting justification.", num, hash);
         self.justification_request_scheduler.on_request_sent();
         self.block_requester.request_justification(hash, num);
@@ -261,10 +261,10 @@ where
                 self.request_status.save_block((hash, num).into());
             }
             Ok(None) => {
-                warn!(target: "aleph-justification", "Cancelling request, because we don't have block {:?}.", top_wanted);
+                warn!(target: "dagestan-justification", "Cancelling request, because we don't have block {:?}.", top_wanted);
             }
             Err(err) => {
-                warn!(target: "aleph-justification", "Cancelling request, because fetching block {:?} failed {:?}.", top_wanted, err);
+                warn!(target: "dagestan-justification", "Cancelling request, because fetching block {:?} failed {:?}.", top_wanted, err);
             }
         }
     }

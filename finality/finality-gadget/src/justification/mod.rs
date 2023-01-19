@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use aleph_primitives::AuthoritySignature;
+use dagestan_primitives::AuthoritySignature;
 use codec::{Decode, Encode};
 use sp_api::{BlockT, NumberFor};
 
@@ -22,13 +22,13 @@ use crate::abft::SignatureSet;
 /// A proof of block finality, currently in the form of a sufficiently long list of signatures or a
 /// sudo signature of a block for emergency finalization.
 #[derive(Clone, Encode, Decode, Debug, PartialEq, Eq)]
-pub enum AlephJustification {
+pub enum DagestanJustification {
     CommitteeMultisignature(SignatureSet<Signature>),
     EmergencySignature(AuthoritySignature),
 }
 
 pub trait Verifier<B: BlockT> {
-    fn verify(&self, justification: &AlephJustification, hash: B::Hash) -> bool;
+    fn verify(&self, justification: &DagestanJustification, hash: B::Hash) -> bool;
 }
 
 pub struct SessionInfo<B: BlockT, V: Verifier<B>> {
@@ -47,7 +47,7 @@ pub trait SessionInfoProvider<B: BlockT, V: Verifier<B>> {
 #[derive(Clone)]
 pub struct JustificationNotification<Block: BlockT> {
     /// The justification itself.
-    pub justification: AlephJustification,
+    pub justification: DagestanJustification,
     /// The hash of the finalized block.
     pub hash: Block::Hash,
     /// The ID of the finalized block.

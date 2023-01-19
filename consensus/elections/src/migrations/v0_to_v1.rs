@@ -8,7 +8,7 @@ use sp_std::vec::Vec;
 use {
     codec::{Decode, Encode},
     frame_support::ensure,
-    pallets_support::ensure_storage_version,
+    dagestan_support::ensure_storage_version,
 };
 
 use crate::{

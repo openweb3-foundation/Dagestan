@@ -31,40 +31,10 @@ sp_application_crypto::with_pair! {
 pub type AuthoritySignature = app::Signature;
 pub type AuthorityId = app::Public;
 
-pub type Balance = u128;
-pub type Header = GenericHeader<BlockNumber, BlakeTwo256>;
-pub type BlockHash = <Header as HeaderT>::Hash;
 pub type BlockNumber = u32;
 pub type SessionCount = u32;
 pub type BlockCount = u32;
 
-pub const MILLISECS_PER_BLOCK: u64 = 1000;
-
-// Quick sessions for testing purposes
-#[cfg(feature = "short_session")]
-pub const DEFAULT_SESSION_PERIOD: u32 = 30;
-#[cfg(feature = "short_session")]
-pub const DEFAULT_SESSIONS_PER_ERA: SessionIndex = 3;
-
-// Default values outside testing
-#[cfg(not(feature = "short_session"))]
-pub const DEFAULT_SESSION_PERIOD: u32 = 900;
-#[cfg(not(feature = "short_session"))]
-pub const DEFAULT_SESSIONS_PER_ERA: SessionIndex = 96;
-
-pub const TOKEN_DECIMALS: u32 = 12;
-pub const TOKEN: u128 = 10u128.pow(TOKEN_DECIMALS);
-
-pub const ADDRESSES_ENCODING: u8 = 42;
-pub const DEFAULT_UNIT_CREATION_DELAY: u64 = 300;
-
-pub const DEFAULT_COMMITTEE_SIZE: u32 = 4;
-
-pub const DEFAULT_BAN_MINIMAL_EXPECTED_PERFORMANCE: Perbill = Perbill::from_percent(0);
-pub const DEFAULT_BAN_SESSION_COUNT_THRESHOLD: SessionCount = 3;
-pub const DEFAULT_BAN_REASON_LENGTH: u32 = 300;
-pub const DEFAULT_CLEAN_SESSION_COUNTER_DELAY: SessionCount = 960;
-pub const DEFAULT_BAN_PERIOD: EraIndex = 10;
 
 /// Openness of the process of the elections
 #[derive(Decode, Encode, TypeInfo, Debug, Clone, PartialEq, Eq)]
@@ -200,7 +170,7 @@ pub struct VersionChange {
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait AlephSessionApi
+    pub trait DagestanSessionApi
     {
         fn next_session_authorities() -> Result<Vec<AuthorityId>, ApiError>;
         fn authorities() -> Vec<AuthorityId>;
@@ -210,59 +180,5 @@ sp_api::decl_runtime_apis! {
         fn millisecs_per_block() -> u64;
         fn finality_version() -> Version;
         fn next_session_finality_version() -> Version;
-    }
-}
-
-pub mod staking {
-    use sp_runtime::Perbill;
-
-    use super::Balance;
-    use crate::TOKEN;
-
-    pub const MIN_VALIDATOR_BOND: u128 = 25_000 * TOKEN;
-    pub const MIN_NOMINATOR_BOND: u128 = 100 * TOKEN;
-    pub const MAX_NOMINATORS_REWARDED_PER_VALIDATOR: u32 = 1024;
-    pub const YEARLY_INFLATION: Balance = 30_000_000 * TOKEN;
-    pub const VALIDATOR_REWARD: Perbill = Perbill::from_percent(90);
-
-    pub fn era_payout(miliseconds_per_era: u64) -> (Balance, Balance) {
-        // Milliseconds per year for the Julian year (365.25 days).
-        const MILLISECONDS_PER_YEAR: u64 = 1000 * 3600 * 24 * 36525 / 100;
-
-        let portion = Perbill::from_rational(miliseconds_per_era, MILLISECONDS_PER_YEAR);
-        let total_payout = portion * YEARLY_INFLATION;
-        let validators_payout = VALIDATOR_REWARD * total_payout;
-        let rest = total_payout - validators_payout;
-
-        (validators_payout, rest)
-    }
-
-    /// Macro for making a default implementation of non-self methods from given class.
-    ///
-    /// As an input it expects list of tuples of form
-    ///
-    /// `(method_name(arg1: type1, arg2: type2, ...), class_name, return_type)`
-    ///
-    /// where
-    ///* `method_name`is a wrapee method,
-    ///* `arg1: type1, arg2: type,...`is a list of arguments and will be passed as is, can be empty
-    ///* `class_name`is a class that has non-self `method-name`,ie symbol `class_name::method_name` exists,
-    ///* `return_type` is type returned from `method_name`
-    /// Example
-    /// ```rust
-    ///  wrap_methods!(
-    ///         (bond(), SubstrateStakingWeights, Weight),
-    ///         (bond_extra(), SubstrateStakingWeights, Weight)
-    /// );
-    /// ```
-    #[macro_export]
-    macro_rules! wrap_methods {
-        ($(($wrapped_method:ident( $($arg_name:ident: $argument_type:ty), *), $wrapped_class:ty, $return_type:ty)), *) => {
-            $(
-                fn $wrapped_method($($arg_name: $argument_type), *) -> $return_type {
-                    <$wrapped_class>::$wrapped_method($($arg_name), *)
-                }
-            )*
-        };
     }
 }

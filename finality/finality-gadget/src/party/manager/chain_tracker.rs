@@ -26,11 +26,11 @@ where
     } = subtask_common;
     let (stop, exit) = oneshot::channel();
     let task = async move {
-        debug!(target: "aleph-party", "Running the chain refresh task for {:?}", session_id);
+        debug!(target: "dagestan-party", "Running the chain refresh task for {:?}", session_id);
         chain_tracker.run(exit).await;
-        debug!(target: "aleph-party", "Chain refresh task stopped for {:?}", session_id);
+        debug!(target: "dagestan-party", "Chain refresh task stopped for {:?}", session_id);
     };
 
-    let handle = spawn_handle.spawn_essential("aleph/consensus_session_refresher", task);
+    let handle = spawn_handle.spawn_essential("dagestan/consensus_session_refresher", task);
     Task::new(handle, stop)
 }

@@ -63,7 +63,7 @@ impl<H: Copy + Hash, PMS, M: Metrics<H>> BlockSignatureAggregator<H, PMS, M> {
     }
 
     fn on_multisigned_hash(&mut self, hash: H, signature: PMS) {
-        debug!(target: "aleph-aggregator", "New multisigned_hash {:?}.", hash);
+        debug!(target: "dagestan-aggregator", "New multisigned_hash {:?}.", hash);
         self.signatures.insert(hash, signature);
     }
 
@@ -107,7 +107,7 @@ impl<H: Copy + Hash, PMS, M: Metrics<H>> BlockSignatureAggregator<H, PMS, M> {
             ));
         }
 
-        info!(target: "aleph-aggregator", "{}", status);
+        info!(target: "dagestan-aggregator", "{}", status);
     }
 }
 
@@ -156,9 +156,9 @@ impl<
     }
 
     pub async fn start_aggregation(&mut self, hash: H) {
-        debug!(target: "aleph-aggregator", "Started aggregation for block hash {:?}", hash);
+        debug!(target: "dagestan-aggregator", "Started aggregation for block hash {:?}", hash);
         if let Err(AggregatorError::DuplicateHash) = self.aggregator.on_start(hash) {
-            debug!(target: "aleph-aggregator", "Aggregation already started for block hash {:?}, ignoring.", hash);
+            debug!(target: "dagestan-aggregator", "Aggregation already started for block hash {:?}, ignoring.", hash);
             return;
         }
         self.multicast
@@ -174,22 +174,22 @@ impl<
                     return Ok(());
                 }
                 message_from_rmc = self.messages_from_rmc.next() => {
-                    trace!(target: "aleph-aggregator", "Our rmc message {:?}.", message_from_rmc);
+                    trace!(target: "dagestan-aggregator", "Our rmc message {:?}.", message_from_rmc);
                     match message_from_rmc {
                         Some(message_from_rmc) => {
                             if let Err(e) = self.network.send(message_from_rmc, Recipient::Everyone) {
-                                error!(target: "aleph-aggregator", "error sending message from rmc.\n{:?}", e);
+                                error!(target: "dagestan-aggregator", "error sending message from rmc.\n{:?}", e);
                             }
                         },
                         None => {
-                            warn!(target: "aleph-aggregator", "the channel of messages from rmc closed");
+                            warn!(target: "dagestan-aggregator", "the channel of messages from rmc closed");
                         }
                     }
                 }
                 message_from_network = self.network.next() =>
                     match message_from_network {
                         Some(message_from_network) => {
-                            trace!(target: "aleph-aggregator", "Received message for rmc: {:?}", message_from_network);
+                            trace!(target: "dagestan-aggregator", "Received message for rmc: {:?}", message_from_network);
                             self.messages_for_rmc.unbounded_send(message_from_network)
                                                  .expect("sending message to rmc failed");
                         },
@@ -204,7 +204,7 @@ impl<
 
     pub async fn next_multisigned_hash(&mut self) -> Option<(H, PMS)> {
         loop {
-            trace!(target: "aleph-aggregator", "Entering next_multisigned_hash loop.");
+            trace!(target: "dagestan-aggregator", "Entering next_multisigned_hash loop.");
             match self.aggregator.try_pop_hash() {
                 Ok(res) => {
                     return Some(res);
@@ -212,14 +212,14 @@ impl<
                 Err(AggregatorError::NoHashFound) => { /* ignored */ }
                 Err(AggregatorError::DuplicateHash) => {
                     warn!(
-                        target: "aleph-aggregator",
+                        target: "dagestan-aggregator",
                         "Unexpected aggregator exception in IO: DuplicateHash",
                     )
                 }
             }
 
             if self.wait_for_next_signature().await.is_err() {
-                warn!(target: "aleph-aggregator", "the network channel closed");
+                warn!(target: "dagestan-aggregator", "the network channel closed");
                 return None;
             }
         }

@@ -51,9 +51,9 @@ mod sync;
 pub mod testing;
 
 pub use abft::{Keychain, NodeCount, NodeIndex, Recipient, SignatureSet, SpawnHandle};
-pub use aleph_primitives::{AuthorityId, AuthorityPair, AuthoritySignature};
-pub use import::AlephBlockImport;
-pub use justification::{AlephJustification, JustificationNotification};
+pub use dagestan_primitives::{AuthorityId, AuthorityPair, AuthoritySignature};
+pub use import::DagestanBlockImport;
+pub use justification::{DagestanJustification, JustificationNotification};
 pub use network::{Protocol, ProtocolNaming};
 pub use nodes::{run_nonvalidator_node, run_validator_node};
 pub use session::SessionPeriod;
@@ -61,7 +61,7 @@ pub use session::SessionPeriod;
 use crate::compatibility::{Version, Versioned};
 pub use crate::metrics::Metrics;
 
-/// Constant defining how often components of finality-aleph should report their state
+/// Constant defining how often components of dagestan-finality-gadget should report their state
 const STATUS_REPORT_INTERVAL: Duration = Duration::from_secs(20);
 
 #[derive(Clone, Debug, Encode, Decode)]
@@ -192,7 +192,7 @@ impl<B: Block> From<CurrentSplitData<B>> for VersionedNetworkData<B> {
     }
 }
 
-pub trait ClientForAleph<B, BE>:
+pub trait ClientForDagestan<B, BE>:
     LockImportRun<B, BE>
     + Finalizer<B, BE>
     + ProvideRuntimeApi<B>
@@ -206,7 +206,7 @@ where
 {
 }
 
-impl<B, BE, T> ClientForAleph<B, BE> for T
+impl<B, BE, T> ClientForDagestan<B, BE> for T
 where
     BE: Backend<B>,
     B: Block,
@@ -242,7 +242,7 @@ impl<H, N> From<(H, N)> for HashNum<H, N> {
 
 pub type BlockHashNum<B> = HashNum<<B as Block>::Hash, NumberFor<B>>;
 
-pub struct AlephConfig<B: Block, H: ExHashT, C, SC, BB> {
+pub struct DagestanConfig<B: Block, H: ExHashT, C, SC, BB> {
     pub network: Arc<NetworkService<B, H>>,
     pub client: Arc<C>,
     pub blockchain_backend: BB,

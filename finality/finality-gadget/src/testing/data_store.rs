@@ -17,7 +17,7 @@ use substrate_test_runtime_client::{
 use tokio::time::timeout;
 
 use crate::{
-    data_io::{AlephData, AlephNetworkMessage, DataStore, DataStoreConfig, MAX_DATA_BRANCH_LEN},
+    data_io::{DagestanData, DagestanNetworkMessage, DataStore, DataStoreConfig, MAX_DATA_BRANCH_LEN},
     network::{
         data::{component::Network as ComponentNetwork, Network as DataNetwork},
         Data, RequestBlocks,
@@ -25,7 +25,7 @@ use crate::{
     session::{SessionBoundaries, SessionId, SessionPeriod},
     testing::{
         client_chain_builder::ClientChainBuilder,
-        mocks::{aleph_data_from_blocks, aleph_data_from_headers},
+        mocks::{dagestan_data_from_blocks, dagestan_data_from_headers},
     },
     BlockHashNum, Recipient,
 };
@@ -75,10 +75,10 @@ impl<B: BlockT> RequestBlocks<B> for TestBlockRequester<B> {
     }
 }
 
-type TestData = Vec<AlephData<Block>>;
+type TestData = Vec<DagestanData<Block>>;
 
-impl AlephNetworkMessage<Block> for TestData {
-    fn included_data(&self) -> Vec<AlephData<Block>> {
+impl DagestanNetworkMessage<Block> for TestData {
+    fn included_data(&self) -> Vec<DagestanData<Block>> {
         self.clone()
     }
 }
@@ -261,7 +261,7 @@ async fn correct_messages_go_through() {
 
         for i in 1..=MAX_DATA_BRANCH_LEN {
             let blocks_branch = blocks[0..i].to_vec();
-            let test_data: TestData = vec![aleph_data_from_blocks(blocks_branch)];
+            let test_data: TestData = vec![dagestan_data_from_blocks(blocks_branch)];
             test_handler.send_data(test_data.clone());
 
             let message = test_handler
@@ -283,7 +283,7 @@ async fn too_long_branch_message_does_not_go_through() {
         test_handler.finalize_block(&blocks[MAX_DATA_BRANCH_LEN + 2].hash());
 
         let blocks_branch = blocks[0..(MAX_DATA_BRANCH_LEN + 1)].to_vec();
-        let test_data: TestData = vec![aleph_data_from_blocks(blocks_branch)];
+        let test_data: TestData = vec![dagestan_data_from_blocks(blocks_branch)];
         test_handler.send_data(test_data.clone());
         test_handler
             .assert_no_message_out("Data Store let through a too long message")
@@ -314,7 +314,7 @@ async fn branch_not_within_session_boundaries_does_not_go_through() {
                 {
                     // blocks start from block num 1, as genesis is block 0, we need to shift the indexing
                     let blocks_branch = blocks[(left_end - 1)..right_end].to_vec();
-                    test_handler.send_data(vec![aleph_data_from_blocks(blocks_branch)]);
+                    test_handler.send_data(vec![dagestan_data_from_blocks(blocks_branch)]);
                 }
             }
         }
@@ -341,7 +341,7 @@ async fn branch_not_within_session_boundaries_does_not_go_through() {
                 {
                     // blocks start from block num 1, as genesis is block 0, we need to shift the indexing
                     let blocks_branch = blocks[(left_end - 1)..right_end].to_vec();
-                    test_handler.send_data(vec![aleph_data_from_blocks(blocks_branch)]);
+                    test_handler.send_data(vec![dagestan_data_from_blocks(blocks_branch)]);
                     test_handler
                         .assert_message_out("Data Store held available proposal")
                         .await;
@@ -362,7 +362,7 @@ async fn branch_with_not_finalized_ancestor_correctly_handled() {
             .await;
 
         let blocks_branch = blocks[1..2].to_vec();
-        let test_data: TestData = vec![aleph_data_from_blocks(blocks_branch)];
+        let test_data: TestData = vec![dagestan_data_from_blocks(blocks_branch)];
         test_handler.send_data(test_data.clone());
 
         test_handler
@@ -382,7 +382,7 @@ async fn branch_with_not_finalized_ancestor_correctly_handled() {
 fn send_proposals_of_each_len(blocks: Vec<Block>, test_handler: &mut TestHandler) {
     for i in 1..=MAX_DATA_BRANCH_LEN {
         let blocks_branch = blocks[0..i].to_vec();
-        let test_data: TestData = vec![aleph_data_from_blocks(blocks_branch)];
+        let test_data: TestData = vec![dagestan_data_from_blocks(blocks_branch)];
         test_handler.send_data(test_data.clone());
     }
 }
@@ -421,7 +421,7 @@ async fn message_with_multiple_data_gets_through_when_it_should() {
         let mut test_data = vec![];
         for i in 1..=max_height {
             let blocks_branch = blocks[i..(i + 1)].to_vec();
-            test_data.push(aleph_data_from_blocks(blocks_branch));
+            test_data.push(dagestan_data_from_blocks(blocks_branch));
         }
         test_handler.send_data(test_data.clone());
 
@@ -452,7 +452,7 @@ async fn sends_block_request_on_missing_block() {
             .initialize_single_branch(MAX_DATA_BRANCH_LEN * 10)
             .await;
         let blocks_branch = blocks[0..1].to_vec();
-        let test_data: TestData = vec![aleph_data_from_blocks(blocks_branch)];
+        let test_data: TestData = vec![dagestan_data_from_blocks(blocks_branch)];
         test_handler.send_data(test_data.clone());
 
         test_handler
@@ -482,7 +482,7 @@ async fn sends_justification_request_when_not_finalized() {
         test_handler.import_branch(blocks.clone()).await;
 
         let blocks_branch = vec![blocks[2].clone()];
-        let test_data = vec![aleph_data_from_blocks(blocks_branch)];
+        let test_data = vec![dagestan_data_from_blocks(blocks_branch)];
         test_handler.send_data(test_data);
 
         test_handler
@@ -532,7 +532,7 @@ async fn message_with_genesis_block_does_not_get_through() {
             .await;
 
         for i in 1..MAX_DATA_BRANCH_LEN {
-            let test_data: TestData = vec![aleph_data_from_headers(
+            let test_data: TestData = vec![dagestan_data_from_headers(
                 (0..i)
                     .into_iter()
                     .map(|num| test_handler.get_header_at(num as u64))
@@ -669,10 +669,10 @@ async fn hopeless_fork_at_the_boundary_goes_through() {
             blocks[fork_num + 1].clone(),
             fork[1].clone(),
         ];
-        let honest_data = vec![aleph_data_from_blocks(honest_hopeless_fork)];
-        let honest_data2 = vec![aleph_data_from_blocks(honest_hopeless_fork2)];
-        let malicious_data = vec![aleph_data_from_blocks(malicious_hopeless_fork)];
-        let malicious_data2 = vec![aleph_data_from_blocks(malicious_hopeless_fork2)];
+        let honest_data = vec![dagestan_data_from_blocks(honest_hopeless_fork)];
+        let honest_data2 = vec![dagestan_data_from_blocks(honest_hopeless_fork2)];
+        let malicious_data = vec![dagestan_data_from_blocks(malicious_hopeless_fork)];
+        let malicious_data2 = vec![dagestan_data_from_blocks(malicious_hopeless_fork2)];
 
         test_handler.send_data(honest_data.clone());
         test_handler.send_data(honest_data2.clone());

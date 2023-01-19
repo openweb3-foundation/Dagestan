@@ -31,7 +31,7 @@ impl Task {
             return result;
         }
         if self.exit.send(()).is_err() {
-            warn!(target: "aleph-party", "Failed to send exit signal to authority");
+            warn!(target: "dagestan-party", "Failed to send exit signal to authority");
         }
         self.handle.await
     }

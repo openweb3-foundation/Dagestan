@@ -3,13 +3,13 @@ use frame_support::{
     traits::{Get, OnRuntimeUpgrade, PalletInfoAccess, StorageVersion},
     weights::Weight,
 };
-use primitives::SessionIndex;
+use dagestan_primitives::SessionIndex;
 use sp_std::vec::Vec;
 #[cfg(feature = "try-runtime")]
 use {
     codec::{Decode, Encode},
     frame_support::ensure,
-    pallets_support::ensure_storage_version,
+    dagestan_support::ensure_storage_version,
 };
 
 use crate::Config;
@@ -17,10 +17,10 @@ use crate::Config;
 type Accounts<T> = Vec<<T as frame_system::Config>::AccountId>;
 
 #[storage_alias]
-type SessionForValidatorsChange = StorageValue<Aleph, SessionIndex>;
+type SessionForValidatorsChange = StorageValue<RuntimeCompanion, SessionIndex>;
 
 #[storage_alias]
-type Validators<T> = StorageValue<Aleph, Accounts<T>>;
+type Validators<T> = StorageValue<RuntimeCompanion, Accounts<T>>;
 
 /// Flattening double `Option<>` storage.
 pub struct Migration<T, P>(sp_std::marker::PhantomData<(T, P)>);
@@ -34,13 +34,13 @@ struct MigrationChecksState<T: Config> {
 
 impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
     fn on_runtime_upgrade() -> Weight {
-        log::info!(target: "pallet_aleph", "Running migration from STORAGE_VERSION 0 to 1");
+        log::info!(target: "dagestan_finality_runtime_companion", "Running migration from STORAGE_VERSION 0 to 1");
 
         let mut writes = 0;
 
         match SessionForValidatorsChange::translate(
             |old: Option<Option<SessionIndex>>| -> Option<SessionIndex> {
-                log::info!(target: "pallet_aleph", "Current storage value for SessionForValidatorsChange {:?}", old);
+                log::info!(target: "dagestan_finality_runtime_companion", "Current storage value for SessionForValidatorsChange {:?}", old);
                 match old {
                     Some(Some(x)) => Some(x),
                     _ => None,
@@ -49,16 +49,16 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
         ) {
             Ok(_) => {
                 writes += 1;
-                log::info!(target: "pallet_aleph", "Successfully migrated storage for SessionForValidatorsChange");
+                log::info!(target: "dagestan_finality_runtime_companion", "Successfully migrated storage for SessionForValidatorsChange");
             }
             Err(why) => {
-                log::error!(target: "pallet_aleph", "Something went wrong during the migration of SessionForValidatorsChange {:?}", why);
+                log::error!(target: "dagestan_finality_runtime_companion", "Something went wrong during the migration of SessionForValidatorsChange {:?}", why);
             }
         };
 
         match Validators::<T>::translate(
             |old: Option<Option<Vec<T::AccountId>>>| -> Option<Vec<T::AccountId>> {
-                log::info!(target: "pallet_aleph", "Current storage value for Validators {:?}", old);
+                log::info!(target: "dagestan_finality_runtime_companion", "Current storage value for Validators {:?}", old);
                 match old {
                     Some(Some(x)) => Some(x),
                     _ => None,
@@ -67,10 +67,10 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
         ) {
             Ok(_) => {
                 writes += 1;
-                log::info!(target: "pallet_aleph", "Successfully migrated storage for Validators");
+                log::info!(target: "dagestan_finality_runtime_companion", "Successfully migrated storage for Validators");
             }
             Err(why) => {
-                log::error!(target: "pallet_aleph", "Something went wrong during the migration of Validators storage {:?}", why);
+                log::error!(target: "dagestan_finality_runtime_companion", "Something went wrong during the migration of Validators storage {:?}", why);
             }
         };
 
@@ -84,9 +84,9 @@ impl<T: Config, P: PalletInfoAccess> OnRuntimeUpgrade for Migration<T, P> {
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         #[storage_alias]
-        type SessionForValidatorsChange = StorageValue<Aleph, Option<SessionIndex>>;
+        type SessionForValidatorsChange = StorageValue<RuntimeCompanion, Option<SessionIndex>>;
         #[storage_alias]
-        type Validators<T> = StorageValue<Aleph, Option<Accounts<T>>>;
+        type Validators<T> = StorageValue<RuntimeCompanion, Option<Accounts<T>>>;
 
         ensure_storage_version::<P>(0)?;
 

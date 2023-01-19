@@ -5,7 +5,7 @@ use frame_support::{
     traits::{OnFinalize, OnInitialize},
     weights::{RuntimeDbWeight, Weight},
 };
-use primitives::AuthorityId;
+use dagestan_primitives::AuthorityId;
 use sp_api_hidden_includes_construct_runtime::hidden_include::traits::GenesisBuild;
 use sp_core::H256;
 use sp_runtime::{
@@ -15,7 +15,7 @@ use sp_runtime::{
 };
 
 use super::*;
-use crate as pallet_aleph;
+use crate as pallet_dagestan;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -29,7 +29,7 @@ construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Aleph: pallet_aleph::{Pallet, Storage, Event<T>},
+        RuntimeCompanion: pallet_dagestan::{Pallet, Storage, Event<T>},
         Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
     }
@@ -37,7 +37,7 @@ construct_runtime!(
 
 impl_opaque_keys! {
     pub struct TestSessionKeys {
-        pub aleph: super::Pallet<Test>,
+        pub dagestan: super::Pallet<Test>,
     }
 }
 
@@ -105,7 +105,7 @@ impl pallet_session::Config for Test {
     type ValidatorIdOf = ConvertInto;
     type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
     type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-    type SessionManager = Aleph;
+    type SessionManager = RuntimeCompanion;
     type SessionHandler = <TestSessionKeys as OpaqueKeys>::KeyTypeIdProviders;
     type Keys = TestSessionKeys;
     type WeightInfo = ();
@@ -168,7 +168,7 @@ pub fn new_test_ext(authorities: &[(u64, u64)]) -> sp_io::TestExternalities {
         .iter()
         .map(|(id, weight)| (UintAuthorityId(*id).to_public_key::<AuthorityId>(), weight))
         .enumerate()
-        .map(|(i, (k, _))| (i as u64, i as u64, TestSessionKeys { aleph: k }))
+        .map(|(i, (k, _))| (i as u64, i as u64, TestSessionKeys { dagestan: k }))
         .collect();
 
     pallet_session::GenesisConfig::<Test> { keys: session_keys }
@@ -181,7 +181,7 @@ pub fn new_test_ext(authorities: &[(u64, u64)]) -> sp_io::TestExternalities {
 pub(crate) fn run_session(n: u32) {
     for i in Session::current_index()..n {
         Session::on_finalize(System::block_number());
-        Aleph::on_finalize(System::block_number());
+        RuntimeCompanion::on_finalize(System::block_number());
         System::on_finalize(System::block_number());
 
         let parent_hash = if System::block_number() > 1 {
@@ -200,7 +200,7 @@ pub(crate) fn run_session(n: u32) {
 
         System::on_initialize(System::block_number());
         Session::on_initialize(System::block_number());
-        Aleph::on_initialize(System::block_number());
+        RuntimeCompanion::on_initialize(System::block_number());
     }
 }
 
@@ -209,5 +209,5 @@ pub(crate) fn initialize_session() {
 
     System::on_initialize(System::block_number());
     Session::on_initialize(System::block_number());
-    Aleph::on_initialize(System::block_number());
+    RuntimeCompanion::on_initialize(System::block_number());
 }

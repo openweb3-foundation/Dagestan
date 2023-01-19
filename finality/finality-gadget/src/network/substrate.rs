@@ -45,15 +45,15 @@ impl<B: Block, H: ExHashT> RequestBlocks<B> for Arc<NetworkService<B, H>> {
     }
 }
 
-/// Name of the network protocol used by Aleph Zero to disseminate validator
+/// Name of the network protocol used by Setheum to disseminate validator
 /// authentications.
 const AUTHENTICATION_PROTOCOL_NAME: &str = "/auth/0";
 
-/// Legacy name of the network protocol used by Aleph Zero to disseminate validator
+/// Legacy name of the network protocol used by Setheum to disseminate validator
 /// authentications. Might be removed after some updates.
-const LEGACY_AUTHENTICATION_PROTOCOL_NAME: &str = "/aleph/1";
+const LEGACY_AUTHENTICATION_PROTOCOL_NAME: &str = "/dagestan/1";
 
-/// Name of the network protocol used by Aleph Zero to synchronize the block state.
+/// Name of the network protocol used by Setheum to synchronize the block state.
 const BLOCK_SYNC_PROTOCOL_NAME: &str = "/sync/0";
 
 /// Convert protocols to their names and vice versa.
@@ -188,23 +188,23 @@ impl<B: Block, H: ExHashT> EventStream<PeerId> for NetworkEventStream<B, H> {
                     SyncConnected { remote } => {
                         let multiaddress: Multiaddr =
                             iter::once(MultiaddressProtocol::P2p(remote.into())).collect();
-                        trace!(target: "aleph-network", "Connected event from address {:?}", multiaddress);
+                        trace!(target: "dagestan-network", "Connected event from address {:?}", multiaddress);
                         if let Err(e) = self.network.add_peers_to_reserved_set(
                             self.naming.protocol_name(&Protocol::Authentication),
                             iter::once(multiaddress.clone()).collect(),
                         ) {
-                            error!(target: "aleph-network", "add_reserved failed for authentications: {}", e);
+                            error!(target: "dagestan-network", "add_reserved failed for authentications: {}", e);
                         }
                         if let Err(e) = self.network.add_peers_to_reserved_set(
                             self.naming.protocol_name(&Protocol::BlockSync),
                             iter::once(multiaddress).collect(),
                         ) {
-                            error!(target: "aleph-network", "add_reserved failed for block sync: {}", e);
+                            error!(target: "dagestan-network", "add_reserved failed for block sync: {}", e);
                         }
                         continue;
                     }
                     SyncDisconnected { remote } => {
-                        trace!(target: "aleph-network", "Disconnected event for peer {:?}", remote);
+                        trace!(target: "dagestan-network", "Disconnected event for peer {:?}", remote);
                         let addresses: Vec<_> = iter::once(remote).collect();
                         self.network.remove_peers_from_reserved_set(
                             self.naming.protocol_name(&Protocol::Authentication),
@@ -271,7 +271,7 @@ impl<B: Block, H: ExHashT> RawNetwork for SubstrateNetwork<B, H> {
 
     fn event_stream(&self) -> Self::EventStream {
         NetworkEventStream {
-            stream: Box::pin(self.network.as_ref().event_stream("aleph-network")),
+            stream: Box::pin(self.network.as_ref().event_stream("dagestan-network")),
             naming: self.naming.clone(),
             network: self.network.clone(),
         }
