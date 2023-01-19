@@ -1,0 +1,3 @@
+[submodule "consensus/aleph-bft"]
+	path = consensus/aleph-bft
+	url = https://github.com/openweb3-foundation/AlephBFT
