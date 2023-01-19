@@ -1,6 +1,6 @@
 use std::{fmt, marker::PhantomData, time::Instant};
 
-use dagestan_primitives::ALEPH_ENGINE_ID;
+use dagestan_primitives::DAGESTAN_ENGINE_ID;
 use log::{debug, error, info, warn};
 use sc_client_api::blockchain::Info;
 use sp_api::{BlockId, BlockT, NumberFor};
@@ -169,7 +169,7 @@ where
         let finalization_res = self.finalizer.finalize_block(
             hash,
             number,
-            Some((ALEPH_ENGINE_ID, versioned_encode(justification))),
+            Some((DAGESTAN_ENGINE_ID, versioned_encode(justification))),
         );
         match finalization_res {
             Ok(()) => {

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc, time::Instant};
 
-use dagestan_primitives::ALEPH_ENGINE_ID;
+use dagestan_primitives::DAGESTAN_ENGINE_ID;
 use futures::channel::mpsc::{TrySendError, UnboundedSender};
 use log::{debug, warn};
 use sc_client_api::backend::Backend;
@@ -73,7 +73,7 @@ where
         justification: Justification,
     ) -> Result<(), SendJustificationError<Block>> {
         debug!(target: "dagestan-justification", "Importing justification for block {:?}", number);
-        if justification.0 != ALEPH_ENGINE_ID {
+        if justification.0 != DAGESTAN_ENGINE_ID {
             return Err(SendJustificationError::Consensus(Box::new(
                 ConsensusError::ClientImport("Dagestan can import only Dagestan justifications.".into()),
             )));
@@ -150,12 +150,12 @@ where
         };
 
         if let Some(justification) =
-            justifications.and_then(|just| just.into_justification(ALEPH_ENGINE_ID))
+            justifications.and_then(|just| just.into_justification(DAGESTAN_ENGINE_ID))
         {
             debug!(target: "dagestan-justification", "Got justification along imported block {:?}", number);
 
             if let Err(e) =
-                self.send_justification(post_hash, number, (ALEPH_ENGINE_ID, justification))
+                self.send_justification(post_hash, number, (DAGESTAN_ENGINE_ID, justification))
             {
                 warn!(target: "dagestan-justification", "Error while receiving justification for block {:?}: {:?}", post_hash, e);
             }

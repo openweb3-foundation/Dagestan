@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
-use dagestan_primitives::{BlockNumber, ALEPH_ENGINE_ID};
+use dagestan_primitives::{BlockNumber, DAGESTAN_ENGINE_ID};
 use log::warn;
 use sp_blockchain::{Backend, Error as ClientError};
 use sp_runtime::{
@@ -83,7 +83,7 @@ where
         let justification = match self
             .client
             .justifications(id)?
-            .and_then(|j| j.into_justification(ALEPH_ENGINE_ID))
+            .and_then(|j| j.into_justification(DAGESTAN_ENGINE_ID))
         {
             Some(justification) => justification,
             None => return Ok(None),

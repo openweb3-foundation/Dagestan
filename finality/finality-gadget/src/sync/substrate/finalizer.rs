@@ -1,4 +1,4 @@
-use dagestan_primitives::{BlockNumber, ALEPH_ENGINE_ID};
+use dagestan_primitives::{BlockNumber, DAGESTAN_ENGINE_ID};
 use sc_client_api::{Backend, Finalizer as SubstrateFinalizer, HeaderBackend, LockImportRun};
 use sp_blockchain::Error as ClientError;
 use sp_runtime::traits::{Block as BlockT, Header as SubstrateHeader};
@@ -23,7 +23,7 @@ where
             justification.header.hash(),
             *justification.header.number(),
             Some((
-                ALEPH_ENGINE_ID,
+                DAGESTAN_ENGINE_ID,
                 versioned_encode(justification.raw_justification),
             )),
         )

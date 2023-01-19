@@ -13,12 +13,12 @@ pub use sp_runtime::{
 pub use sp_staking::{EraIndex, SessionIndex};
 use sp_std::vec::Vec;
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"alp0");
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"setm");
 
 // Same as GRANDPA_ENGINE_ID because as of right now substrate sends only
 // grandpa justifications over the network.
 // TODO: change this once https://github.com/paritytech/substrate/issues/8172 will be resolved.
-pub const ALEPH_ENGINE_ID: ConsensusEngineId = *b"FRNK";
+pub const DAGESTAN_ENGINE_ID: ConsensusEngineId = *b"FRNK";
 
 mod app {
     use sp_application_crypto::{app_crypto, ed25519};
