@@ -3,19 +3,14 @@ cargo-features = ["resolver"]
 [workspace]
 members = [
     # Core
-    "consensus",
-    "finality/finality-companion",
+    "consensus/aggregator",
+    "consensus/elections",
     "finality/finality-gadget",
-    "reliable-broadcast/rmc",
-    "reliable-broadcast/rmc-aggregator",
+    "finality/runtime-companion",
 
     # Utils
-    "utils/crypto",
-    "utils/examples/ordering",
-    "utils/examples/blockchain",
-    "utils/fuzz",
-    "utils/mock",
-    "utils/types",
+    "utils/primitives",
+    "utils/support",
 
 ]
 resolver = "2"
