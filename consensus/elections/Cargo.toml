@@ -37,7 +37,7 @@ std = [
     "pallet-staking/std",
     "pallet-authorship/std",
     "dagestan-support/std",
-    "primitives/std",
+    "dagestan-primitives/std",
     "pallet-balances/std",
     "sp-staking/std",
     "sp-runtime/std",

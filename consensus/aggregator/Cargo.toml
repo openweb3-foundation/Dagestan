@@ -1,5 +1,5 @@
 [package]
-name = "aggregator"
+name = "dagestan-consensus-aggregator"
 version = "0.3.0"
 authors = ["Setheum Labs"]
 edition = "2021"

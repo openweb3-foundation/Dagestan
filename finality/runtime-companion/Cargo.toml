@@ -32,7 +32,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "sp-std/std",
-    "primitives/std",
+    "dagestan-primitives/std",
     "pallet-balances/std",
     "pallet-session/std",
     "dagestan-support/std",
