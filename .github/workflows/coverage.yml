@@ -44,7 +44,7 @@ jobs:
           make Cargo.toml
           cargo tarpaulin --verbose --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
