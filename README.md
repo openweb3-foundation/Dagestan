@@ -35,7 +35,6 @@ Main projects using DAGESTAN are [Setheum Network](https://github.com/Setheum-La
 - [If you intend or are using DAGESTAN, please add your project here](https://github.com/Setheum-Labs/Dagestan/edit/main/README.md)
 
 - [Setheum Network](https://github.com/Setheum-Labs/Setheum)
-- [Khalifa Blockchain](https://github.com/Khalifa-Blockchain/Khalifa)
 
 ## LICENSE
 
