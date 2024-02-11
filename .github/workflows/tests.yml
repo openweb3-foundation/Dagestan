@@ -21,6 +21,7 @@ jobs:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
         if: ${{ github.ref != 'refs/heads/master' }}
+
         uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
