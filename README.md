@@ -28,7 +28,7 @@ DAGESTAN use `Cargo.dev.toml` to avoid workspace conflicts with project cargo co
 
 # Using DAGESTAN
 
-Main projects using DAGESTAN are [Setheum Network](https://github.com/Setheum-Labs/Setheum) and [Khalifa Blockchain](https://github.com/Khalifa-Blockchain/Khalifa)
+The main project using DAGESTAN is [Setheum Network](https://github.com/Setheum-Labs/Setheum)
 
 ## Projects using DAGESTAN (A-Z)
 
